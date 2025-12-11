@@ -1,14 +1,14 @@
 import {
-  DrawerContentComponentProps,
-  DrawerContentScrollView,
+    DrawerContentComponentProps,
+    DrawerContentScrollView,
 } from '@react-navigation/drawer';
 import React from 'react';
 import {
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Image,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 

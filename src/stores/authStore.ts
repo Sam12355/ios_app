@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import apiClient from '../api/ApiClient';
 import { Profile, SignInRequest, SignUpRequest, User } from '../models';
+import { socketService } from '../services/SocketService';
+import { notificationService } from '../services/NotificationService';
 
 interface AuthState {
   user: User | null;
@@ -39,6 +41,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isAuthenticated: true,
         isLoading: false,
       });
+      
+      // Connect to Socket.IO for online presence
+      if (response.accessToken && response.profile?.branchId && response.profile?.id) {
+        socketService.connect(response.accessToken, response.profile.branchId, response.profile.id);
+      }
+      
+      // Register FCM token for push notifications
+      notificationService.onLogin().catch((e) => console.log('Push notification setup error:', e));
     } catch (error: any) {
       set({
         error: error.message || 'Login failed',
@@ -70,6 +80,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signOut: async () => {
     set({ isLoading: true });
     try {
+      // Disconnect socket first
+      socketService.disconnect();
+      
+      // Clean up push notifications
+      notificationService.onLogout().catch((e) => console.log('Push notification cleanup error:', e));
+      
       await apiClient.logout();
       set({
         user: null,
@@ -95,6 +111,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           isAuthenticated: true,
           isLoading: false,
         });
+        
+        // Connect to Socket.IO for online presence
+        const token = await apiClient.getAuthToken();
+        if (token && profile?.branchId && profile?.id) {
+          socketService.connect(token, profile.branchId, profile.id);
+        }
       } else {
         set({
           user: null,

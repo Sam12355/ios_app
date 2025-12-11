@@ -1,23 +1,22 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  ActivityLog,
-  AnalyticsData,
-  AuthResponse,
-  Branch,
-  CalendarEvent,
-  ICADelivery,
-  Item,
-  MovementReportItem,
-  MoveoutList,
-  Notification,
-  Profile,
-  SignUpRequest,
-  SoftDrinksReportData,
-  StockItem,
-  StockReceipt,
-  StockReportItem,
-  User,
-  WeatherData
+    ActivityLog,
+    AnalyticsData,
+    AuthResponse,
+    Branch,
+    CalendarEvent,
+    ICADelivery,
+    Item,
+    MovementReportItem,
+    MoveoutList,
+    Notification,
+    Profile,
+    SignUpRequest,
+    StockItem,
+    StockReceipt,
+    StockReportItem,
+    User,
+    WeatherData
 } from '../models';
 
 const BASE_URL = 'https://stock-nexus-84-main-2-1.onrender.com/api';
@@ -26,6 +25,9 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 // Default timeout for API requests (15 seconds)
 const DEFAULT_TIMEOUT = 15000;
+
+// Delay helper for retry logic
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Fetch with timeout helper
 const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout = DEFAULT_TIMEOUT): Promise<Response> => {
@@ -52,9 +54,13 @@ const STORAGE_KEYS = {
 
 class ApiClient {
   private accessToken: string | null = null;
+  private cachedProfile: Profile | null = null;
+  private profileCacheExpiry: number = 0;
+  private static PROFILE_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
   constructor() {
     this.loadStoredToken();
+    this.loadStoredProfile(); // Load cached profile on startup
   }
 
   private async loadStoredToken() {
@@ -63,6 +69,42 @@ class ApiClient {
     } catch (error) {
       console.log('Error loading stored token:', error);
     }
+  }
+
+  private async loadStoredProfile() {
+    try {
+      const profileData = await AsyncStorage.getItem(STORAGE_KEYS.PROFILE_DATA);
+      if (profileData) {
+        this.cachedProfile = JSON.parse(profileData);
+        this.profileCacheExpiry = Date.now() + ApiClient.PROFILE_CACHE_DURATION;
+        console.log('[ApiClient] Loaded cached profile from storage');
+      }
+    } catch (error) {
+      console.log('Error loading stored profile:', error);
+    }
+  }
+
+  // Get cached profile or fetch if needed (for internal use - fast)
+  private async getCachedProfile(): Promise<Profile | null> {
+    const now = Date.now();
+    if (this.cachedProfile && this.profileCacheExpiry > now) {
+      return this.cachedProfile;
+    }
+    try {
+      const profile = await this.getProfile();
+      this.cachedProfile = profile;
+      this.profileCacheExpiry = now + ApiClient.PROFILE_CACHE_DURATION;
+      return profile;
+    } catch (error) {
+      console.error('[ApiClient] Failed to get cached profile:', error);
+      return null;
+    }
+  }
+
+  // Clear profile cache (call on logout or profile update)
+  clearProfileCache() {
+    this.cachedProfile = null;
+    this.profileCacheExpiry = 0;
   }
 
   private async getHeaders(): Promise<Record<string, string>> {
@@ -84,7 +126,8 @@ class ApiClient {
   private async request<T>(
     endpoint: string,
     options: RequestInit = {},
-    timeout = DEFAULT_TIMEOUT
+    timeout = DEFAULT_TIMEOUT,
+    retryCount = 0
   ): Promise<T> {
     const headers = await this.getHeaders();
     
@@ -95,6 +138,13 @@ class ApiClient {
         ...options.headers,
       },
     }, timeout);
+
+    // Handle rate limiting with retry
+    if (response.status === 429 && retryCount < 3) {
+      const retryAfter = parseInt(response.headers.get('Retry-After') || '2', 10);
+      await delay(retryAfter * 1000);
+      return this.request<T>(endpoint, options, timeout, retryCount + 1);
+    }
 
     const text = await response.text();
     let data;
@@ -207,6 +257,7 @@ class ApiClient {
 
   async logout(): Promise<void> {
     this.accessToken = null;
+    this.clearProfileCache(); // Clear cached profile on logout
     await AsyncStorage.multiRemove([
       STORAGE_KEYS.ACCESS_TOKEN,
       STORAGE_KEYS.REFRESH_TOKEN,
@@ -292,9 +343,57 @@ class ApiClient {
     }
   }
 
+  // Get user profile by ID (for loading thread participant info)
+  async getUserProfileById(userId: string): Promise<Profile | null> {
+    try {
+      // Try /profile/:id endpoint first
+      const response = await this.request<any>(`/profile/${userId}`);
+      const data = response.data || response.user || response;
+      return {
+        id: data.id || userId,
+        name: data.name || 'Unknown User',
+        email: data.email || '',
+        role: data.role || '',
+        photoUrl: data.photo_url || data.photoUrl || null,
+        branchId: data.branch_id || data.branchId || null,
+        branchName: data.branch_name || data.branchName || null,
+        districtName: data.district_name || data.districtName || null,
+        regionName: data.region_name || data.regionName || null,
+        createdAt: data.created_at || data.createdAt || '',
+        updatedAt: data.updated_at || data.updatedAt || '',
+      };
+    } catch (error) {
+      console.log(`[ApiClient] /profile/${userId} failed, trying /users/${userId}:`, error);
+      try {
+        const response = await this.request<any>(`/users/${userId}`);
+        const data = response.data || response.user || response;
+        return {
+          id: data.id || userId,
+          name: data.name || 'Unknown User',
+          email: data.email || '',
+          role: data.role || '',
+          photoUrl: data.photo_url || data.photoUrl || null,
+          branchId: data.branch_id || data.branchId || null,
+          branchName: data.branch_name || data.branchName || null,
+          districtName: data.district_name || data.districtName || null,
+          regionName: data.region_name || data.regionName || null,
+          createdAt: data.created_at || data.createdAt || '',
+          updatedAt: data.updated_at || data.updatedAt || '',
+        };
+      } catch (e) {
+        console.error(`[ApiClient] Failed to get user profile for ${userId}:`, e);
+        return null;
+      }
+    }
+  }
+
   async isLoggedIn(): Promise<boolean> {
     const token = await AsyncStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
     return !!token;
+  }
+
+  async getAuthToken(): Promise<string | null> {
+    return this.accessToken || await AsyncStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
   }
 
   private async saveAuthData(authResponse: AuthResponse): Promise<void> {
@@ -305,6 +404,12 @@ class ApiClient {
     }
     await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(authResponse.user));
     await AsyncStorage.setItem(STORAGE_KEYS.PROFILE_DATA, JSON.stringify(authResponse.profile));
+    
+    // Warm the profile cache so messaging is fast
+    if (authResponse.profile) {
+      this.cachedProfile = authResponse.profile;
+      this.profileCacheExpiry = Date.now() + ApiClient.PROFILE_CACHE_DURATION;
+    }
   }
 
   // Stock/Inventory methods
@@ -711,25 +816,161 @@ class ApiClient {
 
   // Messaging
   async getThreads(): Promise<any[]> {
-    const response = await this.request<{ success: boolean; data: any[] }>('/messages/threads');
-    return response.data || [];
+    try {
+      console.log('[ApiClient] 📡 Calling GET /messages/threads');
+      // Use /messages/threads as primary endpoint (confirmed working)
+      const response = await this.request<any>('/messages/threads');
+      console.log('[ApiClient] ✅ /messages/threads response:', JSON.stringify(response, null, 2));
+      
+      // Handle different response formats
+      if (Array.isArray(response)) {
+        console.log('[ApiClient] Response is array, length:', response.length);
+        return response;
+      }
+      if (response.threads) {
+        console.log('[ApiClient] Response has threads field, length:', response.threads.length);
+        return response.threads;
+      }
+      if (response.data) {
+        console.log('[ApiClient] Response has data field, length:', response.data.length);
+        return response.data;
+      }
+      console.log('[ApiClient] ⚠️ Response format not recognized, returning empty');
+      return [];
+    } catch (error) {
+      console.error('[ApiClient] ❌ /messages/threads failed:', error);
+      return [];
+    }
   }
 
-  async getMessages(threadId: string): Promise<any[]> {
-    const response = await this.request<{ success: boolean; data: any[] }>(`/messages/threads/${threadId}`);
-    return response.data || [];
+  async getMessages(otherUserId: string): Promise<any[]> {
+    try {
+      // Get current user ID from cached profile (fast)
+      const profile = await this.getCachedProfile();
+      const currentUserId = profile?.id;
+      if (!currentUserId) {
+        console.error('[ApiClient] No current user ID for getMessages');
+        return [];
+      }
+      
+      console.log('[ApiClient] 📡 Fetching messages between', currentUserId, 'and', otherUserId);
+      
+      // Use same endpoint as Kotlin: /messages/thread?user1=X&user2=Y
+      const response = await this.request<any>(`/messages/thread?user1=${currentUserId}&user2=${otherUserId}`);
+      
+      // Handle different response formats
+      let rawMessages: any[] = [];
+      if (Array.isArray(response)) {
+        rawMessages = response;
+      } else if (response.data) {
+        rawMessages = response.data;
+      } else if (response.messages) {
+        rawMessages = response.messages;
+      }
+      
+      // Normalize messages - handle read_at being false, null, or a timestamp
+      const normalizedMessages = rawMessages.map((msg: any) => {
+        // Handle read_at - can be false (boolean), null, or a timestamp string
+        let readAt = msg.read_at ?? msg.readAt;
+        if (readAt === false || readAt === 'false' || readAt === null || readAt === undefined) {
+          readAt = null;
+        }
+        
+        // Handle delivered_at similarly
+        let deliveredAt = msg.delivered_at ?? msg.deliveredAt;
+        if (deliveredAt === false || deliveredAt === 'false' || deliveredAt === null || deliveredAt === undefined) {
+          deliveredAt = null;
+        }
+        
+        return {
+          id: msg.id,
+          sender_id: msg.sender_id || msg.senderId,
+          receiver_id: msg.receiver_id || msg.receiverId,
+          content: msg.content || msg.message,
+          sent_at: msg.sent_at || msg.sentAt || msg.created_at || msg.createdAt,
+          created_at: msg.created_at || msg.createdAt || msg.sent_at || msg.sentAt,
+          delivered_at: deliveredAt,
+          read_at: readAt,
+        };
+      });
+      
+      console.log('[ApiClient] ✅ Got', normalizedMessages.length, 'messages');
+      // Log a sample message to debug read_at
+      if (normalizedMessages.length > 0) {
+        const sample = normalizedMessages[normalizedMessages.length - 1];
+        console.log('[ApiClient] Sample message read_at:', sample.read_at, 'delivered_at:', sample.delivered_at);
+      }
+      
+      return normalizedMessages;
+    } catch (error) {
+      console.error('[ApiClient] ❌ Failed to fetch messages:', error);
+      return [];
+    }
   }
 
-  async sendMessage(threadId: string, content: string): Promise<any> {
-    const response = await this.request<{ success: boolean; data: any }>(`/messages/threads/${threadId}`, {
-      method: 'POST',
-      body: JSON.stringify({ content }),
-    });
-    return response.data;
+  async sendMessage(receiverId: string, content: string): Promise<any> {
+    try {
+      // Get current user ID from cached profile (fast)
+      const profile = await this.getCachedProfile();
+      const senderId = profile?.id;
+      if (!senderId) {
+        throw new Error('No current user ID for sendMessage');
+      }
+      
+      console.log('[ApiClient] 📤 Sending message from', senderId, 'to', receiverId);
+      
+      // Use same endpoint as Kotlin: POST /messages/send
+      const response = await this.request<any>('/messages/send', {
+        method: 'POST',
+        body: JSON.stringify({
+          sender_id: senderId,
+          receiver_id: receiverId,
+          content: content,
+        }),
+      });
+      
+      console.log('[ApiClient] ✅ Message sent:', JSON.stringify(response, null, 2));
+      return response.data || response.message || response;
+    } catch (error) {
+      console.error('[ApiClient] ❌ Failed to send message:', error);
+      throw error;
+    }
   }
 
-  async markThreadAsRead(threadId: string): Promise<void> {
-    await this.request(`/messages/threads/${threadId}/read`, { method: 'POST' });
+  async markThreadAsRead(otherUserId: string): Promise<void> {
+    try {
+      // Get current user ID from cached profile (fast)
+      const profile = await this.getCachedProfile();
+      const currentUserId = profile?.id;
+      if (!currentUserId) return;
+      
+      console.log('[ApiClient] 📖 Marking messages as read from', otherUserId);
+      
+      // Emit socket event to notify sender in real-time (matching Kotlin)
+      // Import dynamically to avoid circular dependencies
+      try {
+        const { socketService } = require('../services/SocketService');
+        if (socketService.isSocketConnected()) {
+          // Emit with same format as Kotlin: markMessagesRead with conversationPartnerId
+          socketService.emit('markMessagesRead', { conversationPartnerId: otherUserId });
+          console.log('[ApiClient] 📡 Emitted markMessagesRead socket event for:', otherUserId);
+        }
+      } catch (socketError) {
+        console.log('[ApiClient] Could not emit socket event:', socketError);
+      }
+      
+      // Try to mark as read - endpoint may vary
+      await this.request('/messages/read', {
+        method: 'POST',
+        body: JSON.stringify({
+          reader_id: currentUserId,
+          sender_id: otherUserId,
+        }),
+      });
+    } catch (error) {
+      // Silently fail - read status is not critical
+      console.log('[ApiClient] Could not mark as read:', error);
+    }
   }
 
   // Password
@@ -873,17 +1114,51 @@ class ApiClient {
 
   // Settings
   async updateProfile(updates: Partial<Profile>): Promise<Profile> {
+    // Convert camelCase to snake_case for API
+    const apiUpdates: Record<string, any> = {};
+    if (updates.name !== undefined) apiUpdates.name = updates.name;
+    if (updates.phone !== undefined) apiUpdates.phone = updates.phone;
+    if (updates.position !== undefined) apiUpdates.position = updates.position;
+    if (updates.photoUrl !== undefined) apiUpdates.photo_url = updates.photoUrl;
+    
     const response = await this.request<{ success: boolean; data: Profile }>('/users/profile', {
       method: 'PUT',
-      body: JSON.stringify(updates),
+      body: JSON.stringify(apiUpdates),
     });
     return response.data;
   }
 
   async updateProfilePhoto(photoUri: string): Promise<Profile> {
-    // For now, just update the photo_url
-    // In a real app, this would upload the image first
-    return this.updateProfile({ photoUrl: photoUri });
+    // Use Supabase RPC function to update photo
+    const user = await this.getCurrentUser();
+    if (!user?.id) {
+      throw new Error('User not logged in');
+    }
+    
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/update_user_photo`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({
+        user_id_param: user.id,
+        new_photo_url: photoUri,
+      }),
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to update photo');
+    }
+    
+    const result = await response.json();
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to update photo');
+    }
+    
+    // Refresh and return updated profile
+    return this.getProfile();
   }
 
   async updateNotificationSettings(settings: Record<string, boolean>): Promise<Profile> {
@@ -892,6 +1167,24 @@ class ApiClient {
       body: JSON.stringify({ notification_settings: settings }),
     });
     return response.data;
+  }
+
+  /**
+   * Update FCM token on backend for push notifications
+   * Endpoint: POST /fcm/token
+   */
+  async updateFCMToken(fcmToken: string): Promise<void> {
+    try {
+      console.log('📱 ApiClient: Updating FCM token...');
+      await this.request<{ success: boolean }>('/fcm/token', {
+        method: 'POST',
+        body: JSON.stringify({ fcm_token: fcmToken }),
+      });
+      console.log('✅ ApiClient: FCM token updated successfully');
+    } catch (error) {
+      console.error('❌ ApiClient: Failed to update FCM token:', error);
+      throw error;
+    }
   }
 }
 

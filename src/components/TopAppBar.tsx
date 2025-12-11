@@ -16,16 +16,20 @@ import { useTheme } from '../theme/ThemeContext';
 const API_BASE_URL = 'https://stock-nexus-84-main-2-1.onrender.com/api';
 const TOKEN_KEY = '@stocknexus_access_token';
 
-// Design System Colors
+// Design System Colors (matching Kotlin app)
 const colors = {
   primaryRed: '#E6002A',
   backgroundDark: '#121212',
   surfaceDark: '#1E1E1E',
-  textPrimary: '#FFFFFF',
+  surfaceLight: '#FFFFFF',
+  textPrimaryDark: '#FFFFFF',
+  textPrimaryLight: '#1E1E1E',
   textSecondary: '#B3B3B3',
   textMuted: '#808080',
   sunOrange: '#FFA500',
   onlineGreen: '#22C55E',
+  primaryContainer: '#2A2A2A',
+  primaryContainerLight: '#E8E8E8',
 };
 
 interface OnlineMember {
@@ -55,6 +59,11 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
   const { isDark, toggleTheme } = useTheme();
   const insets = useSafeAreaInsets();
   const [onlineMembers, setOnlineMembers] = useState<OnlineMember[]>([]);
+
+  // Dynamic colors based on theme (matching Kotlin app)
+  const surfaceColor = isDark ? colors.surfaceDark : colors.surfaceLight;
+  const textColor = isDark ? colors.textPrimaryDark : colors.textPrimaryLight;
+  const containerColor = isDark ? colors.primaryContainer : colors.primaryContainerLight;
 
   // Fetch online members (excluding current user)
   useEffect(() => {
@@ -102,11 +111,11 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
   };
 
   return (
-    <View style={[styles.wrapper, { paddingTop: insets.top }]}>
-      <View style={styles.container}>
+    <View style={[styles.wrapper, { paddingTop: insets.top, backgroundColor: surfaceColor }]}>
+      <View style={[styles.container, { backgroundColor: surfaceColor }]}>
         {/* Left side - Hamburger Menu */}
         <TouchableOpacity onPress={onMenuPress} style={styles.iconButton}>
-          <Icon name="menu" size={24} color={colors.textPrimary} />
+          <Icon name="menu" size={24} color={textColor} />
         </TouchableOpacity>
 
         {/* Center - Spacer */}
@@ -116,7 +125,7 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
         <View style={styles.actionsContainer}>
           {/* Inbox/Envelope Icon */}
           <TouchableOpacity onPress={onInboxPress} style={styles.iconButton}>
-            <Icon name="mail-outline" size={24} color={colors.textPrimary} />
+            <Icon name="mail-outline" size={24} color={textColor} />
             {unreadMessagesCount > 0 && (
               <View style={styles.badge}>
                 <Text style={styles.badgeText}>
@@ -138,15 +147,18 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
                   ]}
                 >
                   {member.photoUrl ? (
-                    <Image source={{ uri: member.photoUrl }} style={styles.avatar} />
+                    <Image 
+                      source={{ uri: member.photoUrl }} 
+                      style={[styles.avatar, { borderColor: surfaceColor }]} 
+                    />
                   ) : (
-                    <View style={styles.avatarPlaceholder}>
-                      <Text style={styles.avatarInitials}>
+                    <View style={[styles.avatarPlaceholder, { backgroundColor: containerColor, borderColor: surfaceColor }]}>
+                      <Text style={[styles.avatarInitials, { color: textColor }]}>
                         {member.name ? getInitials(member.name) : '?'}
                       </Text>
                     </View>
                   )}
-                  <View style={styles.onlineIndicator} />
+                  <View style={[styles.onlineIndicator, { borderColor: surfaceColor }]} />
                 </View>
               ))}
             </View>
@@ -154,24 +166,24 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
 
           {/* Search Icon */}
           <TouchableOpacity onPress={onSearchPress} style={styles.iconButton}>
-            <Icon name="search" size={24} color={colors.textPrimary} />
+            <Icon name="search" size={24} color={textColor} />
           </TouchableOpacity>
 
-          {/* Theme Toggle */}
+          {/* Theme Toggle - matches Kotlin: sun in dark mode (orange), moon in light mode */}
           <TouchableOpacity onPress={toggleTheme} style={styles.iconButton}>
             <Icon
               name={isDark ? 'light-mode' : 'dark-mode'}
               size={24}
-              color={isDark ? colors.sunOrange : colors.textPrimary}
+              color={isDark ? colors.sunOrange : textColor}
             />
           </TouchableOpacity>
 
-          {/* Notifications Bell */}
+          {/* Notifications Bell - filled icon like Kotlin */}
           <TouchableOpacity onPress={onNotificationsPress} style={styles.iconButton}>
-            <Icon name="notifications-none" size={24} color={colors.textPrimary} />
+            <Icon name="notifications" size={24} color={textColor} />
             {notificationCount > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>
                   {notificationCount > 99 ? '99+' : notificationCount}
                 </Text>
               </View>
@@ -185,12 +197,12 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
 
 const styles = StyleSheet.create({
   wrapper: {
-    backgroundColor: colors.primaryRed,
+    // backgroundColor set dynamically
   },
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.primaryRed,
+    // backgroundColor set dynamically
     paddingHorizontal: 8,
     paddingVertical: 12,
   },
@@ -204,6 +216,7 @@ const styles = StyleSheet.create({
   actionsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
   stackedAvatars: {
     flexDirection: 'row',
@@ -218,26 +231,26 @@ const styles = StyleSheet.create({
     marginHorizontal: 4,
   },
   avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     borderWidth: 2,
-    borderColor: colors.primaryRed,
+    // borderColor set dynamically
   },
   avatarPlaceholder: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.surfaceDark,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    // backgroundColor set dynamically
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: colors.primaryRed,
+    // borderColor set dynamically
   },
   avatarInitials: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: 'bold',
-    color: colors.textPrimary,
+    // color set dynamically
   },
   onlineIndicator: {
     position: 'absolute',
@@ -248,7 +261,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: colors.onlineGreen,
     borderWidth: 1.5,
-    borderColor: colors.primaryRed,
+    // borderColor set dynamically
   },
   badge: {
     position: 'absolute',
@@ -257,7 +270,7 @@ const styles = StyleSheet.create({
     minWidth: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: colors.surfaceDark,
+    backgroundColor: colors.primaryRed,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 4,
@@ -265,7 +278,24 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: 9,
     fontWeight: 'bold',
-    color: colors.textPrimary,
+    color: '#FFFFFF',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.primaryRed,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 3,
+  },
+  notificationBadgeText: {
+    fontSize: 8,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
 });
 

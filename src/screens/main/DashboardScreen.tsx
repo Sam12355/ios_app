@@ -8,6 +8,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
@@ -17,6 +18,7 @@ import GenerateMoveoutModal from '../../components/dashboard/GenerateMoveoutModa
 import MoveoutItemsModal from '../../components/dashboard/MoveoutItemsModal';
 import { CalendarEvent, MoveoutList, WeatherData } from '../../models';
 import { useAuthStore } from '../../stores/authStore';
+import { localNotificationService } from '../../services/LocalNotificationService';
 
 // Design System Colors - Matching Android app exactly
 const colors = {
@@ -97,11 +99,11 @@ const WeatherWidget = ({ weather, isLoading }: { weather: WeatherData | null; is
       <View style={styles.weatherDetails}>
         <View style={styles.weatherDetailItem}>
           <Icon name="water" size={16} color={colors.infoBlue} />
-          <Text style={styles.weatherDetailText}>{displayWeather.humidity || 95}%</Text>
+          <Text style={styles.weatherDetailText}>{String(displayWeather.humidity || 95)}%</Text>
         </View>
         <View style={styles.weatherDetailItem}>
           <Icon name="air" size={16} color={colors.textSecondary} />
-          <Text style={styles.weatherDetailText}>{displayWeather.windSpeed || 9.0} km/h</Text>
+          <Text style={styles.weatherDetailText}>{String(displayWeather.windSpeed || 9.0)} km/h</Text>
         </View>
       </View>
       
@@ -426,6 +428,22 @@ const DashboardScreen = ({ navigation }: any) => {
           </TouchableOpacity>
         </View>
 
+        {/* TEST Notification Button - Pull down status bar to see notification! */}
+        <TouchableOpacity
+          style={styles.testNotificationButton}
+          onPress={async () => {
+            await localNotificationService.showTestNotification();
+            Alert.alert(
+              '✅ Notification Sent!',
+              'Pull down your status bar to see the notification.',
+              [{ text: 'OK' }]
+            );
+          }}
+        >
+          <Icon name="notifications-active" size={20} color="#FFFFFF" />
+          <Text style={styles.testNotificationText}>🧪 Test Notification</Text>
+        </TouchableOpacity>
+
         {/* Stats Grid - 2x2 (Non-staff only) */}
         {showStatsGrid && (
           <View style={styles.statsGrid}>
@@ -617,6 +635,22 @@ const styles = StyleSheet.create({
   },
   refreshButton: {
     padding: 8,
+  },
+  // Test Notification Button
+  testNotificationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0084FF',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    gap: 8,
+  },
+  testNotificationText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   // Stats Grid
   statsGrid: {

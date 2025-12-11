@@ -16,9 +16,9 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import Toast from 'react-native-toast-message';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
 import apiClient from '../../api/ApiClient';
 import { Item } from '../../models';

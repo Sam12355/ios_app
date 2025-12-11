@@ -4,7 +4,6 @@ import {
     Alert,
     Image,
     Modal,
-    Platform,
     RefreshControl,
     ScrollView,
     StyleSheet,
@@ -12,14 +11,19 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
-import Icon from 'react-native-vector-icons/MaterialIcons';
 import Toast from 'react-native-toast-message';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
 import apiClient from '../../api/ApiClient';
 import { useAuthStore } from '../../stores/authStore';
+
+// Helper to show toast - uses the global Toast from App.tsx
+const showToast = (type: 'success' | 'error' | 'info', text1: string, text2?: string) => {
+  Toast.show({ type, text1, text2, position: 'bottom', visibilityTime: 3000 });
+};
 
 // Design colors matching Kotlin app
 const designColors = {
@@ -36,10 +40,6 @@ const designColors = {
   textSecondary: '#9CA3AF',
   borderLight: 'rgba(255, 255, 255, 0.1)',
   divider: 'rgba(255, 255, 255, 0.12)',
-};
-
-const showToast = (type: 'success' | 'error' | 'info', text1: string, text2?: string) => {
-  Toast.show({ type, text1, text2, position: 'bottom', visibilityTime: 3000 });
 };
 
 interface AlertSchedule {
@@ -288,6 +288,10 @@ const SettingsScreen: React.FC = () => {
   
   // Permissions (for managers)
   const [assistantManagerStockInAccess, setAssistantManagerStockInAccess] = useState(false);
+  const [isSavingPermissions, setIsSavingPermissions] = useState(false);
+  
+  // Pending photo for profile save
+  const [pendingPhotoUri, setPendingPhotoUri] = useState<string | null>(null);
 
   // Load profile data
   const loadProfile = useCallback(async (silent = false) => {
@@ -336,14 +340,33 @@ const SettingsScreen: React.FC = () => {
 
   // Save profile changes
   const handleSaveProfile = async () => {
+    const updates: any = {};
+    if (name !== currentUser?.name) updates.name = name;
+    if (phone !== currentUser?.phone) updates.phone = phone;
+    if (position !== currentUser?.position) updates.position = position;
+    
+    // Check if there's anything to save
+    const hasProfileUpdates = Object.keys(updates).length > 0;
+    const hasPhotoUpdate = !!pendingPhotoUri;
+    
+    if (!hasProfileUpdates && !hasPhotoUpdate) {
+      showToast('info', 'Info', 'No changes to save');
+      return;
+    }
+    
     setIsSaving(true);
     try {
-      const updates: any = {};
-      if (name !== currentUser?.name) updates.name = name;
-      if (phone !== currentUser?.phone) updates.phone = phone;
-      if (position !== currentUser?.position) updates.position = position;
+      // Save profile updates if any
+      if (hasProfileUpdates) {
+        await apiClient.updateProfile(updates);
+      }
       
-      await apiClient.updateProfile(updates);
+      // Save pending photo if any
+      if (hasPhotoUpdate) {
+        await apiClient.updateProfilePhoto(pendingPhotoUri!);
+        setPendingPhotoUri(null);
+      }
+      
       showToast('success', 'Success', 'Profile updated successfully');
       loadProfile(true);
     } catch (error: any) {
@@ -359,12 +382,15 @@ const SettingsScreen: React.FC = () => {
     stockLevelAlerts?: boolean;
     eventReminders?: boolean;
     softdrinkTrends?: boolean;
+    email?: boolean;
+    sms?: boolean;
+    whatsapp?: boolean;
   }) => {
     try {
       const settings = {
-        email: emailNotifications,
-        sms: smsNotifications,
-        whatsapp: whatsappNotifications,
+        email: overrides?.email ?? emailNotifications,
+        sms: overrides?.sms ?? smsNotifications,
+        whatsapp: overrides?.whatsapp ?? whatsappNotifications,
         stockLevelAlerts: overrides?.stockLevelAlerts ?? stockAlerts,
         eventReminders: overrides?.eventReminders ?? eventReminders,
         softdrinkTrends: overrides?.softdrinkTrends ?? softdrinkTrends,
@@ -478,7 +504,7 @@ const SettingsScreen: React.FC = () => {
     }
   };
 
-  // Handle photo change
+  // Handle photo change - stores photo as base64 for later save
   const handleChangePhoto = async () => {
     try {
       const result = await launchImageLibrary({
@@ -486,18 +512,19 @@ const SettingsScreen: React.FC = () => {
         quality: 0.8,
         maxWidth: 500,
         maxHeight: 500,
+        includeBase64: true,
       });
       
-      if (result.assets && result.assets[0]?.uri) {
-        setIsSaving(true);
-        try {
-          await apiClient.updateProfilePhoto(result.assets[0].uri);
-          showToast('success', 'Success', 'Profile picture updated');
-          loadProfile(true);
-        } catch (error: any) {
-          showToast('error', 'Error', error.message || 'Failed to update photo');
-        } finally {
-          setIsSaving(false);
+      if (result.assets && result.assets[0]) {
+        const asset = result.assets[0];
+        if (asset.base64) {
+          // Create data URL from base64 (same as ItemsScreen)
+          const mimeType = asset.type || 'image/jpeg';
+          const dataUrl = `data:${mimeType};base64,${asset.base64}`;
+          setPendingPhotoUri(dataUrl);
+        } else if (asset.uri) {
+          // Fallback to URI
+          setPendingPhotoUri(asset.uri);
         }
       }
     } catch (error) {
@@ -507,6 +534,7 @@ const SettingsScreen: React.FC = () => {
 
   // Handle permissions save (for managers)
   const handleSavePermissions = async () => {
+    setIsSavingPermissions(true);
     try {
       const settings = {
         ...currentUser?.notificationSettings,
@@ -518,6 +546,8 @@ const SettingsScreen: React.FC = () => {
     } catch (error: any) {
       console.error('Save permissions error:', error);
       showToast('error', 'Error', error.message || 'Failed to update permission');
+    } finally {
+      setIsSavingPermissions(false);
     }
   };
 
@@ -604,7 +634,9 @@ const SettingsScreen: React.FC = () => {
 
         {/* Profile Picture */}
         <TouchableOpacity style={styles.profilePictureContainer} onPress={handleChangePhoto}>
-          {currentUser?.photoUrl ? (
+          {pendingPhotoUri ? (
+            <Image source={{ uri: pendingPhotoUri }} style={styles.profilePicture} />
+          ) : currentUser?.photoUrl ? (
             <Image source={{ uri: currentUser.photoUrl }} style={styles.profilePicture} />
           ) : (
             <View style={styles.profilePicturePlaceholder}>
@@ -614,6 +646,11 @@ const SettingsScreen: React.FC = () => {
           <View style={styles.editOverlay}>
             <Icon name="edit" size={24} color="#FFFFFF" />
           </View>
+          {pendingPhotoUri && (
+            <View style={styles.pendingBadge}>
+              <Text style={styles.pendingBadgeText}>Unsaved</Text>
+            </View>
+          )}
         </TouchableOpacity>
 
         {/* Profile Fields */}
@@ -884,8 +921,16 @@ const SettingsScreen: React.FC = () => {
             />
           </View>
 
-          <TouchableOpacity style={styles.primaryButton} onPress={handleSavePermissions}>
-            <Text style={styles.primaryButtonText}>Save Changes</Text>
+          <TouchableOpacity 
+            style={[styles.primaryButton, isSavingPermissions && styles.disabledButton]} 
+            onPress={handleSavePermissions}
+            disabled={isSavingPermissions}
+          >
+            {isSavingPermissions ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.primaryButtonText}>Save Changes</Text>
+            )}
           </TouchableOpacity>
         </View>
       )}
@@ -1025,7 +1070,6 @@ const SettingsScreen: React.FC = () => {
         }}
       />
 
-      <Toast />
     </ScrollView>
   );
 };
@@ -1106,6 +1150,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  pendingBadge: {
+    position: 'absolute',
+    bottom: -5,
+    right: -5,
+    backgroundColor: designColors.primaryRed,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  pendingBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
   inputGroup: {
     marginBottom: 16,
   },
@@ -1133,6 +1191,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 8,
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
   primaryButtonText: {
     color: '#FFFFFF',

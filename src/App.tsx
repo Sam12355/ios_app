@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { LogBox, StatusBar } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -6,6 +6,7 @@ import Toast, { BaseToast, ErrorToast } from 'react-native-toast-message';
 import AppNavigator from './navigation/AppNavigator';
 import { Colors } from './theme/colors';
 import { ThemeProvider, useTheme } from './theme/ThemeContext';
+import { localNotificationService } from './services/LocalNotificationService';
 
 // Ignore specific warnings
 LogBox.ignoreLogs([
@@ -81,6 +82,13 @@ const toastConfig = {
 
 const AppContent = () => {
   const { isDark } = useTheme();
+  
+  // Initialize local notifications (Notifee - works without Apple Developer account!)
+  useEffect(() => {
+    localNotificationService.initialize().catch((error) => {
+      console.log('📱 App: Local notification initialization error:', error);
+    });
+  }, []);
   
   return (
     <>

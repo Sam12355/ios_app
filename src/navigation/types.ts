@@ -15,8 +15,11 @@ export type AuthStackParamList = {
 
 export type MainStackParamList = {
   DrawerNav: undefined;
-  Chat: { userId?: string; threadId?: string };
-  Inbox: undefined;
+  Chat: { 
+    userId: string; 
+    userName?: string; 
+    userPhoto?: string;
+  };
 };
 
 export type DrawerParamList = {
@@ -36,6 +39,12 @@ export type DrawerParamList = {
   MoveoutList: undefined;
   Notifications: undefined;
   Settings: undefined;
+  Inbox: undefined;
+  Chat: { 
+    userId: string; 
+    userName?: string; 
+    userPhoto?: string;
+  };
 };
 
 export interface NavigationItem {

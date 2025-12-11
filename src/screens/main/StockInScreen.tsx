@@ -1,8 +1,9 @@
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { useNavigation } from '@react-navigation/native';
-import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
+    Animated,
     Dimensions,
     Image,
     Linking,
@@ -14,18 +15,17 @@ import {
     TextInput,
     TouchableOpacity,
     View,
-    Animated,
 } from 'react-native';
 import {
     GestureHandlerRootView,
-    PinchGestureHandler,
     PanGestureHandler,
-    State,
-    PinchGestureHandlerGestureEvent,
     PanGestureHandlerGestureEvent,
+    PinchGestureHandler,
+    PinchGestureHandlerGestureEvent,
+    State,
 } from 'react-native-gesture-handler';
-import Icon from 'react-native-vector-icons/MaterialIcons';
 import Toast from 'react-native-toast-message';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
 import apiClient from '../../api/ApiClient';
 import { StockItem, StockReceipt } from '../../models';

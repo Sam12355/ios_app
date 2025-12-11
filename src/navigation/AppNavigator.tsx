@@ -1,7 +1,7 @@
 import { createDrawerNavigator } from '@react-navigation/drawer';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { UserRole } from '../models';
@@ -44,6 +44,8 @@ import {
 
 // Components
 import CustomDrawer from '../components/CustomDrawer';
+import NotificationsDropdown from '../components/NotificationsDropdown';
+import SearchModal from '../components/SearchModal';
 import TopAppBar from '../components/TopAppBar';
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
@@ -72,31 +74,49 @@ const AuthNavigator = () => {
 const DrawerNavigator = () => {
   const { colors, isDark } = useTheme();
   const { profile } = useAuthStore();
+  const navigation = useNavigation<any>();
   const userRole = (profile?.role || 'staff') as UserRole;
   const navItems = getNavigationItemsForRole(userRole);
+  const [showSearchModal, setShowSearchModal] = useState(false);
+  const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
+  const [notificationCount, setNotificationCount] = useState(0);
 
   return (
-    <Drawer.Navigator
-      drawerContent={(props) => <CustomDrawer {...props} />}
-      screenOptions={({ navigation }) => ({
-        header: () => (
-          <TopAppBar
-            onMenuPress={() => navigation.openDrawer()}
-            onSearchPress={() => {/* TODO: Search */}}
-            onNotificationsPress={() => navigation.navigate('Notifications')}
-            onInboxPress={() => navigation.navigate('Inbox')}
-            notificationCount={0}
-            unreadMessagesCount={0}
-          />
-        ),
-        drawerActiveBackgroundColor: Colors.primary + '20',
-        drawerActiveTintColor: Colors.primary,
-        drawerInactiveTintColor: colors.text,
-        drawerStyle: {
-          backgroundColor: colors.background,
-        },
-      })}
-    >
+    <>
+      <SearchModal 
+        visible={showSearchModal} 
+        onClose={() => setShowSearchModal(false)} 
+      />
+      <NotificationsDropdown
+        visible={showNotificationsDropdown}
+        onClose={() => setShowNotificationsDropdown(false)}
+        onViewAll={() => {
+          setShowNotificationsDropdown(false);
+          navigation.navigate('Notifications');
+        }}
+        onNotificationCountChange={setNotificationCount}
+      />
+      <Drawer.Navigator
+        drawerContent={(props) => <CustomDrawer {...props} />}
+        screenOptions={({ navigation: navProp }) => ({
+          header: () => (
+            <TopAppBar
+              onMenuPress={() => navProp.openDrawer()}
+              onSearchPress={() => setShowSearchModal(true)}
+              onNotificationsPress={() => setShowNotificationsDropdown(true)}
+              onInboxPress={() => navigation.navigate('Inbox')}
+              notificationCount={notificationCount}
+              unreadMessagesCount={0}
+            />
+          ),
+          drawerActiveBackgroundColor: Colors.primary + '20',
+          drawerActiveTintColor: Colors.primary,
+          drawerInactiveTintColor: colors.text,
+          drawerStyle: {
+            backgroundColor: colors.background,
+          },
+        })}
+      >
       <Drawer.Screen 
         name="Dashboard" 
         component={DashboardScreen}
@@ -201,7 +221,18 @@ const DrawerNavigator = () => {
         component={SettingsScreen}
         options={{ title: 'Settings' }}
       />
+      <Drawer.Screen 
+        name="Inbox" 
+        component={InboxScreen}
+        options={{ title: 'Messages', drawerItemStyle: { display: 'none' } }}
+      />
+      <Drawer.Screen 
+        name="Chat" 
+        component={ChatScreen}
+        options={{ title: 'Chat', drawerItemStyle: { display: 'none' } }}
+      />
     </Drawer.Navigator>
+    </>
   );
 };
 
@@ -221,16 +252,6 @@ const MainNavigator = () => {
         name="DrawerNav" 
         component={DrawerNavigator}
         options={{ headerShown: false }}
-      />
-      <MainStack.Screen 
-        name="Inbox" 
-        component={InboxScreen}
-        options={{ title: 'Messages' }}
-      />
-      <MainStack.Screen 
-        name="Chat" 
-        component={ChatScreen}
-        options={{ title: 'Chat' }}
       />
     </MainStack.Navigator>
   );
