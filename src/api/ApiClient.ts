@@ -202,6 +202,10 @@ class ApiClient {
     maxRetries = 3,
     skipCache = false
   ): Promise<T> {
+    // Reduce retries for auth endpoints (they're usually fast or totally down)
+    const isAuthEndpoint = endpoint.includes('/auth/') || endpoint.includes('/profile');
+    const effectiveMaxRetries = isAuthEndpoint ? 1 : maxRetries;
+    
     // If in auth error state, fail fast
     if (this.isAuthError) {
       throw new Error('Authentication error - please re-login');
@@ -239,11 +243,11 @@ class ApiClient {
       }
 
         // Handle server errors (502, 503, 504) with exponential backoff
-        if ((response.status === 502 || response.status === 503 || response.status === 504) && retryCount < maxRetries) {
+        if ((response.status === 502 || response.status === 503 || response.status === 504) && retryCount < effectiveMaxRetries) {
           const backoffDelay = Math.min(1000 * Math.pow(2, retryCount), 10000); // Max 10 seconds
-          this.logError(`Server error ${response.status} on ${endpoint}`, `Retrying in ${backoffDelay}ms (attempt ${retryCount + 1}/${maxRetries})`);
+          this.logError(`Server error ${response.status} on ${endpoint}`, `Retrying in ${backoffDelay}ms (attempt ${retryCount + 1}/${effectiveMaxRetries})`);
           await delay(backoffDelay);
-          return this.request<T>(endpoint, options, timeout, retryCount + 1, maxRetries, true);
+          return this.request<T>(endpoint, options, timeout, retryCount + 1, effectiveMaxRetries, true);
         }
 
         const text = await response.text();
@@ -279,11 +283,14 @@ class ApiClient {
         return data;
       } catch (error: any) {
         // Handle network errors (AbortError, fetch failures) with exponential backoff
-        if (retryCount < maxRetries && (error.name === 'AbortError' || error.message?.includes('Network') || error.message?.includes('Failed to fetch'))) {
+        if (retryCount < effectiveMaxRetries && (error.name === 'AbortError' || error.message?.includes('Network') || error.message?.includes('Failed to fetch'))) {
           const backoffDelay = Math.min(1000 * Math.pow(2, retryCount), 10000); // Max 10 seconds
-          this.logError(`Network error on ${endpoint}`, `Retrying in ${backoffDelay}ms (attempt ${retryCount + 1}/${maxRetries})`);
+          // Don't log network errors for auth endpoints during initial check
+          if (!isAuthEndpoint || retryCount > 0) {
+            this.logError(`Network error on ${endpoint}`, `Retrying in ${backoffDelay}ms (attempt ${retryCount + 1}/${effectiveMaxRetries})`);
+          }
           await delay(backoffDelay);
-          return this.request<T>(endpoint, options, timeout, retryCount + 1, maxRetries, true);
+          return this.request<T>(endpoint, options, timeout, retryCount + 1, effectiveMaxRetries, true);
         }
         throw error;
       }

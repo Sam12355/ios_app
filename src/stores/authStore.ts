@@ -119,16 +119,28 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           if (token && profile?.branchId && profile?.id) {
             socketService.connect(token, profile.branchId, profile.id);
           }
-        } catch (error) {
-          // Token exists but is invalid - clear auth state
-          console.log('[AuthStore] Token invalid, clearing auth state');
-          await apiClient.logout();
-          set({
-            user: null,
-            profile: null,
-            isAuthenticated: false,
-            isLoading: false,
-          });
+        } catch (error: any) {
+          // Differentiate between network errors and auth errors
+          const isNetworkError = error.name === 'AbortError' || 
+                                error.message?.includes('Network') || 
+                                error.message?.includes('Failed to fetch') ||
+                                error.message?.includes('timeout');
+          
+          if (isNetworkError) {
+            // Network error - keep logged in state, will retry later
+            console.log('[AuthStore] Network error during auth check, staying logged in');
+            set({ isLoading: false });
+          } else {
+            // Token exists but is invalid - clear auth state
+            console.log('[AuthStore] Token invalid, clearing auth state');
+            await apiClient.logout();
+            set({
+              user: null,
+              profile: null,
+              isAuthenticated: false,
+              isLoading: false,
+            });
+          }
         }
       } else {
         set({

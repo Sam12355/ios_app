@@ -92,7 +92,7 @@ const toastConfig = {
 };
 
 const AppContent = () => {
-  const { isDark } = useTheme();
+  const { isDark, colors } = useTheme();
   
   // Initialize local notifications (Notifee - works without Apple Developer account!)
   useEffect(() => {
@@ -105,7 +105,7 @@ const AppContent = () => {
     <>
       <StatusBar
         barStyle={isDark ? 'light-content' : 'dark-content'}
-        backgroundColor={Colors.primary}
+        backgroundColor={isDark ? colors.surface : Colors.primary}
       />
       <AppNavigator />
     </>

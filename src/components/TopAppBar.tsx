@@ -291,7 +291,7 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
           {/* Theme Toggle - matches Kotlin: sun in dark mode (orange), moon in light mode */}
           <TouchableOpacity onPress={toggleTheme} style={styles.iconButton}>
             <Icon
-              name={isDark ? 'light-mode' : 'dark-mode'}
+              name={isDark ? 'wb-sunny' : 'nightlight-round'}
               size={24}
               color={isDark ? colors.sunOrange : textColor}
             />
