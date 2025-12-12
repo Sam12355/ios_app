@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { RouteProp, useFocusEffect, useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
@@ -22,10 +22,19 @@ import { socketService } from '../../services/SocketService';
 import { notificationService } from '../../services/NotificationService';
 import { localNotificationService } from '../../services/LocalNotificationService';
 import { useAuthStore } from '../../stores/authStore';
+import { useMessageStore } from '../../stores/messageStore';
 
 // API config for online status (fallback)
 const API_BASE_URL = 'https://stock-nexus-84-main-2-1.onrender.com/api';
-const TOKEN_KEY = '@stocknexus/auth_token';
+const TOKEN_KEY = '@stocknexus_access_token';
+
+const debugLog = (...args: any[]) => {
+  if (__DEV__) console.log(...args);
+};
+
+const debugWarn = (...args: any[]) => {
+  if (__DEV__) console.warn(...args);
+};
 
 // Message interface matching Kotlin
 interface ChatMessage {
@@ -96,7 +105,7 @@ const MessageBubble: React.FC<{ message: ChatMessage; isFromCurrentUser: boolean
   // Debug: Log read status for the message (only for current user's messages)
   // This helps verify if read_at is properly set
   if (isFromCurrentUser && message.read_at) {
-    console.log('[MessageBubble] ✓✓ Message has read_at:', message.id?.substring(0, 8), message.read_at);
+    debugLog('[MessageBubble] ✓✓ Message has read_at:', message.id?.substring(0, 8), message.read_at);
   }
 
   return (
@@ -141,46 +150,147 @@ const MessageBubble: React.FC<{ message: ChatMessage; isFromCurrentUser: boolean
 export const ChatScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { profile: currentUser } = useAuthStore();
+  // Get message store actions and state
+  const { setMessages: setStoreMessages, markMessagesAsRead, setCurrentUserId, setCurrentChatUserId } = useMessageStore();
   const navigation = useNavigation();
   const route = useRoute<RouteProp<ChatRouteParams, 'Chat'>>();
+  const isFocused = useIsFocused(); // Check if this screen is currently focused
+  const isFocusedRef = useRef(isFocused);
+  // If a `messagesRead` socket event arrives before we receive/replace the server message ID
+  // (e.g. we still have a `temp-...` optimistic message), buffer read-at by ID.
+  const pendingReadAtByMessageIdRef = useRef<Map<string, string>>(new Map());
   const flatListRef = useRef<FlatList>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { userId, userName, userPhoto } = route.params || {};
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [allMessages, setAllMessages] = useState<ChatMessage[]>([]); // All messages from API
+  const [displayCount, setDisplayCount] = useState(20); // Show 20 initially
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [sending, setSending] = useState(false);
   const [messageText, setMessageText] = useState('');
   const [isTyping, setIsTyping] = useState(false); // Other user typing
   const [showProfileImage, setShowProfileImage] = useState(false);
   const [isOnline, setIsOnline] = useState(false);
+  
+  // Set current user ID in message store when it becomes available
+  useEffect(() => {
+    if (currentUser?.id) {
+      setCurrentUserId(currentUser.id);
+    }
+  }, [currentUser?.id, setCurrentUserId]);
 
-  const fetchMessages = useCallback(async () => {
+  useEffect(() => {
+    isFocusedRef.current = isFocused;
+  }, [isFocused]);
+  
+  // CRITICAL: Stack navigators keep screens mounted; we must clear on BLUR, not just unmount.
+  useFocusEffect(
+    useCallback(() => {
+      if (!userId) return;
+
+      debugLog('[ChatScreen] 📍 Focused - setting current chat to:', userId);
+      setCurrentChatUserId(userId);
+      notificationService.setCurrentChatUserId(userId);
+      localNotificationService.setCurrentChatUserId(userId);
+
+      // OPTIMISTIC UPDATE: Clear unread cache immediately so badge updates instantly
+      apiClient.clearUnreadCountCache();
+      debugLog('[ChatScreen] 📬 Opened chat - optimistically clearing badge');
+
+      return () => {
+        debugLog('[ChatScreen] 📍 Blurred - clearing current chat');
+        setCurrentChatUserId(null);
+        notificationService.setCurrentChatUserId(null);
+        localNotificationService.setCurrentChatUserId(null);
+      };
+    }, [userId, setCurrentChatUserId])
+  );
+
+  const fetchMessages = useCallback(async (skipCache = false) => {
     if (!userId) return;
     try {
-      console.log('[ChatScreen] Fetching messages for user:', userId);
-      const data = await apiClient.getMessages(userId);
-      console.log('[ChatScreen] Got messages:', data?.length || 0);
+      debugLog('🔵 [DEBUG] Fetching messages for user:', userId, skipCache ? '(forced)' : '(cached)');
       
-      // Debug: Log messages with read status
-      const myMessages = (data || []).filter((m: any) => m.sender_id === currentUser?.id);
-      const readMessages = myMessages.filter((m: any) => m.read_at);
-      console.log('[ChatScreen] My messages:', myMessages.length, 'Read by other:', readMessages.length);
-      if (readMessages.length > 0) {
-        console.log('[ChatScreen] Sample read message:', JSON.stringify(readMessages[0]));
+      // If forcing fresh, clear cache first
+      if (skipCache) {
+        apiClient.clearMessageCache(userId);
       }
       
-      // Reverse for inverted FlatList (newest at top of data = bottom of screen)
-      setMessages((data || []).reverse());
-      // Mark as read in background - don't await
-      apiClient.markThreadAsRead(userId).catch(() => {});
-    } catch (error) {
+      const data = await apiClient.getMessages(userId);
+      
+      // CRITICAL: Only process if we got valid data (not null/undefined/error)
+      if (!data || !Array.isArray(data)) {
+        debugLog('🔵 [DEBUG] No valid data received, skipping update');
+        return;
+      }
+      
+      // Count unread messages FROM the other user (these are the ones we need to mark as read)
+      const unreadFromOther = data.filter((m: any) => {
+        const senderId = m.sender_id || m.senderId;
+        const readAt = m.read_at ?? m.readAt;
+        return senderId === userId && !readAt;
+      });
+      debugLog('🔵 [DEBUG] Unread messages loaded:', unreadFromOther.length);
+      
+      // Debug: Log messages with read status
+      const myMessages = data.filter((m: any) => m.sender_id === currentUser?.id);
+      const readMessages = myMessages.filter((m: any) => m.read_at);
+      debugLog('[ChatScreen] My messages:', myMessages.length, 'Read by other:', readMessages.length);
+      
+      // Store ALL messages (sorted oldest first)
+      const sortedMessages = data.sort((a, b) => 
+        new Date(a.sent_at || a.created_at || 0).getTime() - 
+        new Date(b.sent_at || b.created_at || 0).getTime()
+      );
+      setAllMessages(sortedMessages);
+      
+      // Display only last 20 messages initially (reversed for inverted list)
+      const messagesToDisplay = sortedMessages.slice(-displayCount).reverse();
+      setMessages(messagesToDisplay);
+      
+      // CRITICAL: Also store in message store (for local unread calculation - Kotlin approach!)
+      // Store in normal order (oldest first) - only if we have messages!
+      if (data.length > 0) {
+        setStoreMessages(userId, data);
+      }
+
+      debugLog('[ChatScreen] 📦 Showing', messagesToDisplay.length, 'of', data.length, 'total messages');
+      
+      // Only mark as read if there are unread messages
+      if (unreadFromOther.length > 0) {
+        debugLog('🔵 [DEBUG] Sending read receipt for', unreadFromOther.length, 'messages...');
+        
+        // CRITICAL: Ensure currentUserId is set BEFORE marking as read!
+        if (currentUser?.id) {
+          setCurrentUserId(currentUser.id);
+        }
+        
+        // INSTANT: Mark messages as read in LOCAL state FIRST (Kotlin approach!)
+        markMessagesAsRead(userId);
+        
+        // Then emit socket event (for sender to see read receipts)
+        await apiClient.markThreadAsRead(userId);
+        debugLog('🔵 [DEBUG] Read receipt sent via socket + local state updated');
+      } else {
+        debugLog('🔵 [DEBUG] No unread messages - skipping read receipt');
+      }
+        
+    } catch (error: any) {
       console.error('[ChatScreen] Failed to fetch messages:', error);
+      // If authentication error, don't retry - user needs to re-login
+      if (error?.message?.includes('Authentication') || error?.message?.includes('401')) {
+        debugWarn('[ChatScreen] ⚠️ Authentication error - stopping polling');
+        // Let the error propagate so polling stops
+        throw error;
+      }
+      // DON'T update store on error - keep existing data!
     } finally {
       setLoading(false);
     }
-  }, [userId, currentUser?.id]);
+  }, [userId, currentUser?.id, setStoreMessages, markMessagesAsRead, setCurrentUserId]);
 
   // Check if the other user is online - run in background, don't block UI
   const checkOnlineStatus = useCallback(async () => {
@@ -210,19 +320,46 @@ export const ChatScreen: React.FC = () => {
         setIsOnline(onlineIds.includes(userId));
       }
     } catch (error) {
-      console.log('[ChatScreen] Could not check online status:', error);
+      debugLog('[ChatScreen] Could not check online status:', error);
     }
   }, [userId]);
 
   useEffect(() => {
-    // Tell notification service we're viewing this conversation (suppress notifications)
-    notificationService.setCurrentChatUserId(userId);
-    localNotificationService.setCurrentChatUserId(userId);
-    
-    // Fetch messages immediately
-    fetchMessages();
+    // Fetch messages ONCE on mount
+    fetchMessages(false);
     // Check online status in background (don't await)
     checkOnlineStatus();
+    
+    // Fallback polling: only when screen is focused AND socket is disconnected
+    let pollErrorCount = 0;
+    let pollInterval: NodeJS.Timeout | null = null;
+    
+    const startPolling = () => {
+      if (pollInterval) return; // Already polling
+      pollInterval = setInterval(async () => {
+        // Only poll if socket is disconnected AND screen is focused
+        if (!socketService.isSocketConnected() && isFocusedRef.current) {
+          try {
+            if (__DEV__) debugLog('[ChatScreen] 🔄 Fallback polling (socket disconnected)');
+            await fetchMessages(false);
+            pollErrorCount = 0;
+          } catch (error: any) {
+            pollErrorCount++;
+            if (__DEV__) debugLog('[ChatScreen] ⚠️ Poll error count:', pollErrorCount);
+            if (pollErrorCount >= 2 && (error?.message?.includes('Authentication') || error?.message?.includes('401'))) {
+              if (__DEV__) debugWarn('[ChatScreen] 🛑 Stopping polling due to auth errors');
+              if (pollInterval) clearInterval(pollInterval);
+              pollInterval = null;
+            }
+          }
+        }
+      }, 10000);
+    };
+    
+    // Start polling only if socket is initially disconnected
+    if (!socketService.isSocketConnected()) {
+      startPolling();
+    }
     
     // Subscribe to socket online members for real-time updates
     const unsubscribe = socketService.onOnlineMembersChange((members) => {
@@ -233,20 +370,32 @@ export const ChatScreen: React.FC = () => {
     
     // Subscribe to new messages from socket
     const handleNewMessage = (data: any) => {
-      console.log('[ChatScreen] Socket new_message event:', data);
+      debugLog('[ChatScreen] Socket new_message event:', data);
       const senderId = data?.sender_id || data?.senderId || '';
       const receiverId = data?.receiver_id || data?.receiverId || '';
       
       // Only add if message is part of this conversation
       if (senderId === userId || receiverId === userId) {
+        // If message is FROM the other user, mark it as read immediately (we're viewing it!)
+        const isFromOtherUser = senderId === userId;
+        const isChatVisible = isFocusedRef.current;
+        const messageId = data.id || `socket-${Date.now()}`;
+        const pendingReadAt = pendingReadAtByMessageIdRef.current.get(messageId);
+        if (pendingReadAt) {
+          pendingReadAtByMessageIdRef.current.delete(messageId);
+        }
         const newMsg: ChatMessage = {
-          id: data.id || `socket-${Date.now()}`,
+          id: messageId,
           sender_id: senderId,
           receiver_id: receiverId,
           content: data.content || data.message || '',
           sent_at: data.sent_at || data.created_at || new Date().toISOString(),
           delivered_at: data.delivered_at,
-          read_at: data.read_at,
+          // CRITICAL: Only set read_at if ChatScreen is FOCUSED (not just mounted!)
+          // This ensures badge increments when user is on dashboard
+          read_at: isFromOtherUser
+            ? (isChatVisible ? new Date().toISOString() : data.read_at)
+            : (pendingReadAt || data.read_at),
         };
         
         // Add to START of array (inverted list)
@@ -258,16 +407,24 @@ export const ChatScreen: React.FC = () => {
             // Replace optimistic with real
             return prev.map(m => 
               m.content === newMsg.content && m.sender_id === newMsg.sender_id && m.id.startsWith('temp-') 
-                ? newMsg 
+                ? { ...newMsg, read_at: newMsg.read_at ?? m.read_at } 
                 : m
             );
           }
           return [newMsg, ...prev];
         });
         
-        // Mark as read if from the other user
-        if (senderId === userId) {
-          apiClient.markThreadAsRead(userId).catch(() => {});
+        // CRITICAL FIX: Only mark as read if ChatScreen is actually visible/focused
+        // This prevents auto-marking messages as read when user is on dashboard
+        if (isFromOtherUser && isChatVisible) {
+          // Mark as read via socket and clear cache for instant badge update
+          apiClient.markThreadAsRead(userId);
+          apiClient.clearUnreadCountCache();
+          // Also mark as read in LOCAL store to prevent badge increment
+          markMessagesAsRead(userId);
+          debugLog('[ChatScreen] ✅ Marked incoming message as read (screen focused), badge refreshed');
+        } else if (isFromOtherUser && !isChatVisible) {
+          debugLog('[ChatScreen] 📬 New message received but screen not focused - keeping as unread');
         }
       }
     };
@@ -275,7 +432,7 @@ export const ChatScreen: React.FC = () => {
     // Subscribe to typing indicators
     const handleTyping = (data: any) => {
       const typingUserId = data?.userId || data?.user_id || data?.senderId || '';
-      console.log('[ChatScreen] Typing event from:', typingUserId, 'expecting:', userId);
+      debugLog('[ChatScreen] Typing event from:', typingUserId, 'expecting:', userId);
       if (typingUserId === userId) {
         setIsTyping(true);
         
@@ -291,7 +448,7 @@ export const ChatScreen: React.FC = () => {
     
     const handleStopTyping = (data: any) => {
       const typingUserId = data?.userId || data?.user_id || data?.senderId || '';
-      console.log('[ChatScreen] Stop typing event from:', typingUserId);
+      debugLog('[ChatScreen] Stop typing event from:', typingUserId);
       if (typingUserId === userId) {
         setIsTyping(false);
         if (typingTimeoutRef.current) {
@@ -303,7 +460,7 @@ export const ChatScreen: React.FC = () => {
     
     // Subscribe to read receipts
     const handleMessagesRead = (data: any) => {
-      console.log('[ChatScreen] 📖 Messages read event received:', JSON.stringify(data));
+      debugLog('[ChatScreen] 📖 Messages read event received:', JSON.stringify(data));
       const readAt = data?.readAt || data?.read_at || new Date().toISOString();
       const messageIds = data?.messageIds || data?.message_ids || [];
       // readerId = who read the messages (the OTHER person - userId in this chat)
@@ -311,13 +468,28 @@ export const ChatScreen: React.FC = () => {
       // conversationPartnerId = whose messages were read (could be current user - the sender)
       // When Android reads YOUR messages, conversationPartnerId = YOUR ID (currentUser.id)
       const conversationPartnerId = data?.conversationPartnerId || data?.conversation_partner_id || '';
-      
-      console.log('[ChatScreen] 📖 Read event details:');
-      console.log('  - messageIds:', messageIds.length);
-      console.log('  - readerId:', readerId);
-      console.log('  - conversationPartnerId:', conversationPartnerId);
-      console.log('  - currentUser.id:', currentUser?.id);
-      console.log('  - chatting with userId:', userId);
+
+      debugLog('[ChatScreen] 📖 Read event details:');
+      debugLog('  - messageIds:', messageIds.length);
+      debugLog('  - readerId:', readerId);
+      debugLog('  - conversationPartnerId:', conversationPartnerId);
+      debugLog('  - currentUser.id:', currentUser?.id);
+      debugLog('  - chatting with userId:', userId);
+
+      // Buffer any IDs so if the read event arrives before the `new_message` with server ID
+      // (while we still show a `temp-...` optimistic message), we can apply `read_at` later.
+      if (Array.isArray(messageIds) && messageIds.length > 0) {
+        const map = pendingReadAtByMessageIdRef.current;
+        messageIds.forEach((id: any) => {
+          if (typeof id === 'string' && id.length > 0) {
+            map.set(id, readAt);
+          }
+        });
+        // Safety: prevent unbounded growth
+        if (map.size > 500) {
+          pendingReadAtByMessageIdRef.current = new Map(Array.from(map.entries()).slice(-200));
+        }
+      }
       
       setMessages((prev) => {
         let updated = false;
@@ -325,7 +497,7 @@ export const ChatScreen: React.FC = () => {
           // If we have specific message IDs, check them
           if (messageIds.length > 0) {
             if (messageIds.includes(msg.id)) {
-              console.log('[ChatScreen] ✓✓ Marking message as read by ID:', msg.id);
+              debugLog('[ChatScreen] ✓✓ Marking message as read by ID:', msg.id);
               updated = true;
               return { ...msg, read_at: readAt };
             }
@@ -334,14 +506,14 @@ export const ChatScreen: React.FC = () => {
           // The other person (userId) read our messages - conversationPartnerId would be our ID
           else if (conversationPartnerId === currentUser?.id || readerId === userId) {
             if (msg.sender_id === currentUser?.id && !msg.read_at) {
-              console.log('[ChatScreen] ✓✓ Marking our message as read:', msg.id);
+              debugLog('[ChatScreen] ✓✓ Marking our message as read:', msg.id);
               updated = true;
               return { ...msg, read_at: readAt };
             }
           } 
           // Fallback: if the event is about this conversation, mark our unread messages
           else if (msg.sender_id === currentUser?.id && msg.receiver_id === userId && !msg.read_at) {
-            console.log('[ChatScreen] ✓✓ Marking message as read (fallback):', msg.id);
+            debugLog('[ChatScreen] ✓✓ Marking message as read (fallback):', msg.id);
             updated = true;
             return { ...msg, read_at: readAt };
           }
@@ -349,9 +521,9 @@ export const ChatScreen: React.FC = () => {
         });
         
         if (updated) {
-          console.log('[ChatScreen] ✓✓ Messages updated with read status');
+          debugLog('[ChatScreen] ✓✓ Messages updated with read status');
         } else {
-          console.log('[ChatScreen] ⚠️ No messages were updated');
+          debugLog('[ChatScreen] ⚠️ No messages were updated');
         }
         
         return newMessages;
@@ -367,24 +539,27 @@ export const ChatScreen: React.FC = () => {
     socketService.on('message_read', handleMessagesRead);
     socketService.on('messagesRead', handleMessagesRead);
     
-    // Also poll API as fallback periodically for online status
-    const onlineInterval = setInterval(checkOnlineStatus, 30000);
+    // Fallback online status check: only when socket disconnected AND focused
+    let onlineInterval: NodeJS.Timeout | null = null;
+    const startOnlinePolling = () => {
+      if (onlineInterval) return;
+      onlineInterval = setInterval(() => {
+        if (!socketService.isSocketConnected() && isFocusedRef.current) {
+          checkOnlineStatus();
+        }
+      }, 60000);
+    };
     
-    // Periodically refresh messages to pick up read status from DB (every 10 seconds)
-    // This ensures read status is updated even if socket events are missed
-    const messageRefreshInterval = setInterval(() => {
-      console.log('[ChatScreen] 🔄 Periodic message refresh for read status');
-      fetchMessages();
-    }, 10000);
+    if (!socketService.isSocketConnected()) {
+      startOnlinePolling();
+    }
     
     return () => {
-      // Clear notification service chat user (stop suppressing notifications)
-      notificationService.setCurrentChatUserId(null);
-      localNotificationService.setCurrentChatUserId(null);
+      if (__DEV__) debugLog('[ChatScreen] Leaving chat - will trigger badge refresh');
       
       unsubscribe();
-      clearInterval(onlineInterval);
-      clearInterval(messageRefreshInterval);
+      if (onlineInterval) clearInterval(onlineInterval);
+      if (pollInterval) clearInterval(pollInterval);
       // Clear typing timeout
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
@@ -404,6 +579,28 @@ export const ChatScreen: React.FC = () => {
     // For inverted list, scroll to index 0 (which appears at bottom)
     flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
   };
+
+  // Load more messages when scrolling to top (in inverted list, this is onEndReached)
+  const loadMoreMessages = useCallback(() => {
+    if (loadingMore || allMessages.length === 0) return;
+    if (messages.length >= allMessages.length) {
+      debugLog('[ChatScreen] 📜 All messages already loaded');
+      return;
+    }
+    
+    setLoadingMore(true);
+    debugLog('[ChatScreen] 💼 Loading more messages...');
+    
+    // Load 20 more messages
+    setTimeout(() => {
+      const newCount = Math.min(displayCount + 20, allMessages.length);
+      setDisplayCount(newCount);
+      const messagesToDisplay = allMessages.slice(-newCount).reverse();
+      setMessages(messagesToDisplay);
+      setLoadingMore(false);
+      debugLog('[ChatScreen] 💼 Loaded more. Now showing', messagesToDisplay.length, 'of', allMessages.length);
+    }, 300); // Small delay to prevent rapid repeated calls
+  }, [loadingMore, messages.length, allMessages.length, allMessages, displayCount]);
 
   // No need to scroll on message count change - inverted list handles this
 
@@ -505,6 +702,15 @@ export const ChatScreen: React.FC = () => {
         maxToRenderPerBatch={20}
         windowSize={10}
         initialNumToRender={20}
+        onEndReached={loadMoreMessages}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          loadingMore ? (
+            <View style={{ padding: 20, transform: [{ scaleY: -1 }] }}>
+              <ActivityIndicator size="small" color="#E6002A" />
+            </View>
+          ) : null
+        }
         ListEmptyComponent={
           <View style={[styles.emptyContainer, { transform: [{ scaleY: -1 }] }]}>
             <Icon name="chat-bubble-outline" size={64} color="#808080" />

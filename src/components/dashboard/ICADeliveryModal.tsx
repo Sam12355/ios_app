@@ -40,7 +40,6 @@ const ICADeliveryModal: React.FC<ICADeliveryModalProps> = ({
     setIsLoading(true);
     try {
       await apiClient.createICADelivery({
-        temperature: parseFloat(temperature),
         notes,
         status: 'pending',
         delivery_date: new Date().toISOString(),

@@ -29,6 +29,14 @@ const DEFAULT_TIMEOUT = 15000;
 // Delay helper for retry logic
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+const debugLog = (...args: any[]) => {
+  if (__DEV__) console.log(...args);
+};
+
+const debugWarn = (...args: any[]) => {
+  if (__DEV__) console.warn(...args);
+};
+
 // Fetch with timeout helper
 const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout = DEFAULT_TIMEOUT): Promise<Response> => {
   const controller = new AbortController();
@@ -57,6 +65,20 @@ class ApiClient {
   private cachedProfile: Profile | null = null;
   private profileCacheExpiry: number = 0;
   private static PROFILE_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  
+  // Request cache to prevent duplicate simultaneous calls
+  private requestCache: Map<string, { promise: Promise<any>; timestamp: number }> = new Map();
+  private static REQUEST_CACHE_DURATION = 15000; // 15 seconds - aggressive caching for speed
+  
+  // Error tracking to reduce console spam
+  private recentErrors: Map<string, number> = new Map();
+  private static ERROR_LOG_THROTTLE = 30000; // Only log same error once per 30s
+  
+  // Auth error state - prevent repeated failed requests
+  private isAuthError = false;
+  
+  // Badge refresh callback - called when unread count changes
+  private badgeRefreshCallback: (() => void) | null = null;
 
   constructor() {
     this.loadStoredToken();
@@ -67,7 +89,7 @@ class ApiClient {
     try {
       this.accessToken = await AsyncStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
     } catch (error) {
-      console.log('Error loading stored token:', error);
+      debugLog('Error loading stored token:', error);
     }
   }
 
@@ -77,10 +99,10 @@ class ApiClient {
       if (profileData) {
         this.cachedProfile = JSON.parse(profileData);
         this.profileCacheExpiry = Date.now() + ApiClient.PROFILE_CACHE_DURATION;
-        console.log('[ApiClient] Loaded cached profile from storage');
+        debugLog('[ApiClient] Loaded cached profile from storage');
       }
     } catch (error) {
-      console.log('Error loading stored profile:', error);
+      debugLog('Error loading stored profile:', error);
     }
   }
 
@@ -107,6 +129,43 @@ class ApiClient {
     this.profileCacheExpiry = 0;
   }
 
+  // Clear message cache for specific user conversation
+  clearMessageCache(userId: string) {
+    const cacheKey = `/messages?user1=${this.cachedProfile?.id}&user2=${userId}`;
+    this.requestCache.delete(cacheKey);
+    debugLog('[ApiClient] Cleared message cache for:', userId);
+  }
+
+  // Clear unread count cache to force refresh
+  clearUnreadCountCache() {
+    // Clear all message-related caches
+    const keysToDelete: string[] = [];
+    this.requestCache.forEach((value, key) => {
+      if (key.includes('/messages')) {
+        keysToDelete.push(key);
+      }
+    });
+    keysToDelete.forEach(key => this.requestCache.delete(key));
+    debugLog('[ApiClient] 🧹 Cleared unread count cache, deleted', keysToDelete.length, 'entries');
+    
+    // Trigger badge refresh callback with a small delay to allow backend to persist read status
+    if (this.badgeRefreshCallback) {
+      debugLog('[ApiClient] 🔔 Scheduling badge refresh callback (200ms delay)');
+      setTimeout(() => {
+        try {
+          this.badgeRefreshCallback && this.badgeRefreshCallback();
+        } catch (e) {
+          debugLog('[ApiClient] Error while running badgeRefreshCallback:', e);
+        }
+      }, 200);
+    }
+  }
+  
+  // Set callback to be called when badge needs refresh
+  setBadgeRefreshCallback(callback: (() => void) | null) {
+    this.badgeRefreshCallback = callback;
+  }
+
   private async getHeaders(): Promise<Record<string, string>> {
     if (!this.accessToken) {
       this.accessToken = await AsyncStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
@@ -123,44 +182,126 @@ class ApiClient {
     return headers;
   }
 
+  // Throttled error logging to reduce console spam
+  private logError(context: string, error: any) {
+    const errorKey = `${context}:${error?.message || error}`;
+    const now = Date.now();
+    const lastLogged = this.recentErrors.get(errorKey) || 0;
+    
+    if (now - lastLogged > ApiClient.ERROR_LOG_THROTTLE) {
+      console.error(`[ApiClient] ❌ ${context}:`, error);
+      this.recentErrors.set(errorKey, now);
+    }
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {},
     timeout = DEFAULT_TIMEOUT,
-    retryCount = 0
+    retryCount = 0,
+    maxRetries = 3,
+    skipCache = false
   ): Promise<T> {
+    // If in auth error state, fail fast
+    if (this.isAuthError) {
+      throw new Error('Authentication error - please re-login');
+    }
+    
+    // For GET requests, check cache to prevent duplicate simultaneous calls
+    const isGetRequest = !options.method || options.method === 'GET';
+    const cacheKey = `${endpoint}:${JSON.stringify(options)}`;
+    
+    if (isGetRequest && !skipCache) {
+      const cached = this.requestCache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < ApiClient.REQUEST_CACHE_DURATION) {
+        debugLog(`[ApiClient] 📦 Returning cached request for ${endpoint}`);
+        return cached.promise;
+      }
+    }
+    
     const headers = await this.getHeaders();
     
-    const response = await fetchWithTimeout(`${BASE_URL}${endpoint}`, {
-      ...options,
-      headers: {
-        ...headers,
-        ...options.headers,
-      },
-    }, timeout);
+    const requestPromise = (async (): Promise<T> => {
+      try {
+        const response = await fetchWithTimeout(`${BASE_URL}${endpoint}`, {
+          ...options,
+          headers: {
+            ...headers,
+            ...options.headers,
+          },
+        }, timeout);
 
-    // Handle rate limiting with retry
-    if (response.status === 429 && retryCount < 3) {
-      const retryAfter = parseInt(response.headers.get('Retry-After') || '2', 10);
-      await delay(retryAfter * 1000);
-      return this.request<T>(endpoint, options, timeout, retryCount + 1);
-    }
+      // Handle rate limiting with retry
+      if (response.status === 429 && retryCount < maxRetries) {
+        const retryAfter = parseInt(response.headers.get('Retry-After') || '2', 10);
+        await delay(retryAfter * 1000);
+        return this.request<T>(endpoint, options, timeout, retryCount + 1, maxRetries);
+      }
 
-    const text = await response.text();
-    let data;
+        // Handle server errors (502, 503, 504) with exponential backoff
+        if ((response.status === 502 || response.status === 503 || response.status === 504) && retryCount < maxRetries) {
+          const backoffDelay = Math.min(1000 * Math.pow(2, retryCount), 10000); // Max 10 seconds
+          this.logError(`Server error ${response.status} on ${endpoint}`, `Retrying in ${backoffDelay}ms (attempt ${retryCount + 1}/${maxRetries})`);
+          await delay(backoffDelay);
+          return this.request<T>(endpoint, options, timeout, retryCount + 1, maxRetries, true);
+        }
+
+        const text = await response.text();
+        let data;
+        
+        try {
+          data = text ? JSON.parse(text) : null;
+        } catch {
+          data = text;
+        }
+
+        if (!response.ok) {
+          const errorMessage = data?.message || data?.error || `HTTP ${response.status}`;
+          
+          // Handle 401 auth errors - reload token and retry once
+          if (response.status === 401) {
+            if (retryCount < 1) {
+              debugLog('[ApiClient] 🔄 Got 401, reloading token and retrying...');
+              this.accessToken = null;
+              await this.loadStoredToken();
+              return this.request<T>(endpoint, options, timeout, retryCount + 1, maxRetries, true);
+            } else {
+              // After retry failed, mark as auth error to prevent further requests
+              this.isAuthError = true;
+              debugLog('[ApiClient] 🚫 Authentication failed after retry - token invalid');
+              throw new Error('Authentication error');
+            }
+          }
+          
+          throw new Error(errorMessage);
+        }
+
+        return data;
+      } catch (error: any) {
+        // Handle network errors (AbortError, fetch failures) with exponential backoff
+        if (retryCount < maxRetries && (error.name === 'AbortError' || error.message?.includes('Network') || error.message?.includes('Failed to fetch'))) {
+          const backoffDelay = Math.min(1000 * Math.pow(2, retryCount), 10000); // Max 10 seconds
+          this.logError(`Network error on ${endpoint}`, `Retrying in ${backoffDelay}ms (attempt ${retryCount + 1}/${maxRetries})`);
+          await delay(backoffDelay);
+          return this.request<T>(endpoint, options, timeout, retryCount + 1, maxRetries, true);
+        }
+        throw error;
+      }
+    })();
     
-    try {
-      data = text ? JSON.parse(text) : null;
-    } catch {
-      data = text;
+    // Cache GET requests
+    if (isGetRequest && !skipCache) {
+      this.requestCache.set(cacheKey, { promise: requestPromise, timestamp: Date.now() });
+      
+      // Clear cache entry after completion (success or failure)
+      requestPromise.finally(() => {
+        setTimeout(() => {
+          this.requestCache.delete(cacheKey);
+        }, ApiClient.REQUEST_CACHE_DURATION);
+      });
     }
-
-    if (!response.ok) {
-      const errorMessage = data?.message || data?.error || `HTTP ${response.status}`;
-      throw new Error(errorMessage);
-    }
-
-    return data;
+    
+    return requestPromise;
   }
 
   // Auth methods
@@ -363,7 +504,7 @@ class ApiClient {
         updatedAt: data.updated_at || data.updatedAt || '',
       };
     } catch (error) {
-      console.log(`[ApiClient] /profile/${userId} failed, trying /users/${userId}:`, error);
+      debugLog(`[ApiClient] /profile/${userId} failed, trying /users/${userId}:`, error);
       try {
         const response = await this.request<any>(`/users/${userId}`);
         const data = response.data || response.user || response;
@@ -534,7 +675,7 @@ class ApiClient {
       }
       return (response as { success: boolean; data: CalendarEvent[] }).data || [];
     } catch (error) {
-      console.log('Calendar events error, returning empty array:', error);
+      debugLog('Calendar events error, returning empty array:', error);
       return [];
     }
   }
@@ -608,7 +749,7 @@ class ApiClient {
       }
       return (response as { success: boolean; data: any[] }).data || [];
     } catch (error) {
-      console.log('ICA Delivery records error:', error);
+      debugLog('ICA Delivery records error:', error);
       return [];
     }
   }
@@ -628,14 +769,14 @@ class ApiClient {
       submittedAt: new Date().toISOString(),
     };
     
-    console.log('ICA Delivery API Request Body:', JSON.stringify(requestBody, null, 2));
+    debugLog('ICA Delivery API Request Body:', JSON.stringify(requestBody, null, 2));
     
     const response = await this.request<{ success: boolean; data: any } | any>('/ica-delivery', {
       method: 'POST',
       body: JSON.stringify(requestBody),
     });
     
-    console.log('ICA Delivery API Response:', JSON.stringify(response, null, 2));
+    debugLog('ICA Delivery API Response:', JSON.stringify(response, null, 2));
     
     return response;
   }
@@ -649,7 +790,7 @@ class ApiClient {
   async getStaff(): Promise<Profile[]> {
     const response = await this.request<{ success: boolean; data: any[] }>('/users/staff');
     if (!response.data) {
-      console.warn('getStaff: No data in response');
+      debugWarn('getStaff: No data in response');
       return [];
     }
     return response.data.map(staff => ({
@@ -817,29 +958,165 @@ class ApiClient {
   // Messaging
   async getThreads(): Promise<any[]> {
     try {
-      console.log('[ApiClient] 📡 Calling GET /messages/threads');
+      debugLog('[ApiClient] 📡 Calling GET /messages/threads');
       // Use /messages/threads as primary endpoint (confirmed working)
       const response = await this.request<any>('/messages/threads');
-      console.log('[ApiClient] ✅ /messages/threads response:', JSON.stringify(response, null, 2));
+      debugLog('[ApiClient] ✅ /messages/threads response:', JSON.stringify(response, null, 2));
       
       // Handle different response formats
       if (Array.isArray(response)) {
-        console.log('[ApiClient] Response is array, length:', response.length);
+        debugLog('[ApiClient] Response is array, length:', response.length);
         return response;
       }
       if (response.threads) {
-        console.log('[ApiClient] Response has threads field, length:', response.threads.length);
+        debugLog('[ApiClient] Response has threads field, length:', response.threads.length);
         return response.threads;
       }
       if (response.data) {
-        console.log('[ApiClient] Response has data field, length:', response.data.length);
+        debugLog('[ApiClient] Response has data field, length:', response.data.length);
         return response.data;
       }
-      console.log('[ApiClient] ⚠️ Response format not recognized, returning empty');
+      debugLog('[ApiClient] ⚠️ Response format not recognized, returning empty');
       return [];
     } catch (error) {
       console.error('[ApiClient] ❌ /messages/threads failed:', error);
       return [];
+    }
+  }
+
+  /**
+   * Get ALL messages for the current user (from all conversations)
+   * Used to calculate unread counts accurately
+   * Returns null on error to distinguish from "no messages"
+   */
+  async getAllUserMessages(): Promise<any[] | null> {
+    try {
+      const profile = await this.getCachedProfile();
+      if (!profile?.id) {
+        console.error('[ApiClient] No current user ID for getAllUserMessages');
+        return null;
+      }
+
+      debugLog('[ApiClient] 📡 Fetching all messages for user:', profile.id);
+      const response = await this.request<any>('/messages');
+      
+      // Handle different response formats
+      let messages: any[] = [];
+      if (Array.isArray(response)) {
+        messages = response;
+      } else if (response.data) {
+        messages = response.data;
+      } else if (response.messages) {
+        messages = response.messages;
+      }
+      
+      debugLog('[ApiClient] ✅ Got', messages.length, 'total messages');
+      return messages;
+    } catch (error) {
+      console.error('[ApiClient] ❌ Failed to get all messages:', error);
+      return null; // Return null on error, not empty array
+    }
+  }
+
+  /**
+   * Get total unread message count across all conversations
+   * Calculates by fetching all messages and counting those from others that are unread
+   * Returns null on error so UI doesn't reset to 0
+   */
+  async getTotalUnreadMessageCount(): Promise<number | null> {
+    try {
+      const profile = await this.getCachedProfile();
+      const currentUserId = profile?.id;
+      if (!currentUserId) {
+        return null; // No user = can't count
+      }
+      
+      const messages = await this.getAllUserMessages();
+      
+      // If fetch failed, return null to preserve current badge
+      if (messages === null) {
+        debugLog('[ApiClient] ⚠️ Messages fetch failed, returning null to preserve badge');
+        return null;
+      }
+      
+      // Count messages where sender is NOT current user AND read_at is null/false
+      const unreadMessages = messages.filter((msg: any) => {
+        const senderId = msg.sender_id || msg.senderId;
+        const readAt = msg.read_at ?? msg.readAt;
+        // Message is unread if it's from someone else and read_at is null/false/undefined
+        return senderId !== currentUserId && !readAt;
+      });
+      
+      // Log sample unread message for debugging
+      if (unreadMessages.length > 0) {
+        debugLog('[ApiClient] 📊 Sample unread:', JSON.stringify(unreadMessages[0]).substring(0, 200));
+      } else {
+        // Log sample message to see what read_at values look like
+        const incomingMessages = messages.filter((msg: any) => {
+          const senderId = msg.sender_id || msg.senderId;
+          return senderId !== currentUserId;
+        });
+        if (incomingMessages.length > 0) {
+          debugLog('[ApiClient] 📊 All incoming messages are read. Sample:', JSON.stringify(incomingMessages[0]).substring(0, 200));
+        }
+      }
+
+      debugLog('[ApiClient] 📊 Total unread messages:', unreadMessages.length, 'of', messages.length);
+      return unreadMessages.length;
+    } catch (error) {
+      console.error('[ApiClient] ❌ Failed to get unread count:', error);
+      // Return null to indicate the fetch failed; do not overwrite UI badge with 0
+      return null;
+    }
+  }
+
+  /**
+   * Get unread count per conversation partner
+   * Returns a map of { partnerId: unreadCount }
+   */
+  async getUnreadCountsPerConversation(): Promise<Record<string, number>> {
+    try {
+      const profile = await this.getCachedProfile();
+      const currentUserId = profile?.id;
+      if (!currentUserId) {
+        return {};
+      }
+      
+      const messages = await this.getAllUserMessages();
+      
+      // If fetch failed, return empty (can't calculate)
+      if (messages === null) {
+        return {};
+      }
+      
+      const unreadCounts: Record<string, number> = {};
+      
+      // Log total incoming messages for debugging
+      let totalIncoming = 0;
+      let totalUnread = 0;
+      
+      // Count unread messages per sender (conversation partner)
+      messages.forEach((msg: any) => {
+        const senderId = msg.sender_id || msg.senderId;
+        const readAt = msg.read_at ?? msg.readAt;
+        
+        // Only count messages from others
+        if (senderId !== currentUserId) {
+          totalIncoming++;
+          // Only count as unread if read_at is null/false/undefined
+          if (!readAt) {
+            totalUnread++;
+            unreadCounts[senderId] = (unreadCounts[senderId] || 0) + 1;
+          }
+        }
+      });
+      
+      debugLog('[ApiClient] 📊 Incoming messages:', totalIncoming, 'Unread:', totalUnread);
+      debugLog('[ApiClient] 📊 Unread counts per conversation:', JSON.stringify(unreadCounts));
+      return unreadCounts;
+    } catch (error) {
+      console.error('[ApiClient] ❌ Failed to get unread counts per conversation:', error);
+      return {};
     }
   }
 
@@ -853,7 +1130,7 @@ class ApiClient {
         return [];
       }
       
-      console.log('[ApiClient] 📡 Fetching messages between', currentUserId, 'and', otherUserId);
+      debugLog('[ApiClient] 📡 Fetching messages between', currentUserId, 'and', otherUserId);
       
       // Use same endpoint as Kotlin: /messages/thread?user1=X&user2=Y
       const response = await this.request<any>(`/messages/thread?user1=${currentUserId}&user2=${otherUserId}`);
@@ -894,11 +1171,11 @@ class ApiClient {
         };
       });
       
-      console.log('[ApiClient] ✅ Got', normalizedMessages.length, 'messages');
+      debugLog('[ApiClient] ✅ Got', normalizedMessages.length, 'messages');
       // Log a sample message to debug read_at
       if (normalizedMessages.length > 0) {
         const sample = normalizedMessages[normalizedMessages.length - 1];
-        console.log('[ApiClient] Sample message read_at:', sample.read_at, 'delivered_at:', sample.delivered_at);
+        debugLog('[ApiClient] Sample message read_at:', sample.read_at, 'delivered_at:', sample.delivered_at);
       }
       
       return normalizedMessages;
@@ -917,7 +1194,7 @@ class ApiClient {
         throw new Error('No current user ID for sendMessage');
       }
       
-      console.log('[ApiClient] 📤 Sending message from', senderId, 'to', receiverId);
+      debugLog('[ApiClient] 📤 Sending message from', senderId, 'to', receiverId);
       
       // Use same endpoint as Kotlin: POST /messages/send
       const response = await this.request<any>('/messages/send', {
@@ -929,7 +1206,7 @@ class ApiClient {
         }),
       });
       
-      console.log('[ApiClient] ✅ Message sent:', JSON.stringify(response, null, 2));
+      debugLog('[ApiClient] ✅ Message sent:', JSON.stringify(response, null, 2));
       return response.data || response.message || response;
     } catch (error) {
       console.error('[ApiClient] ❌ Failed to send message:', error);
@@ -944,32 +1221,26 @@ class ApiClient {
       const currentUserId = profile?.id;
       if (!currentUserId) return;
       
-      console.log('[ApiClient] 📖 Marking messages as read from', otherUserId);
+      debugLog('🔵 [DEBUG] Marking messages as read from', otherUserId);
       
-      // Emit socket event to notify sender in real-time (matching Kotlin)
-      // Import dynamically to avoid circular dependencies
+      // 1. Emit socket events for real-time notification to sender
       try {
         const { socketService } = require('../services/SocketService');
         if (socketService.isSocketConnected()) {
-          // Emit with same format as Kotlin: markMessagesRead with conversationPartnerId
+          socketService.emit('mark_read', { senderId: otherUserId });
           socketService.emit('markMessagesRead', { conversationPartnerId: otherUserId });
-          console.log('[ApiClient] 📡 Emitted markMessagesRead socket event for:', otherUserId);
+          debugLog('🔵 [DEBUG] Read receipt sent via socket');
         }
       } catch (socketError) {
-        console.log('[ApiClient] Could not emit socket event:', socketError);
+        debugLog('[ApiClient] Could not emit socket event:', socketError);
       }
       
-      // Try to mark as read - endpoint may vary
-      await this.request('/messages/read', {
-        method: 'POST',
-        body: JSON.stringify({
-          reader_id: currentUserId,
-          sender_id: otherUserId,
-        }),
-      });
-    } catch (error) {
-      // Silently fail - read status is not critical
-      console.log('[ApiClient] Could not mark as read:', error);
+      // 2. Supabase RPC function not available - socket events are sufficient
+      // The server will handle marking messages as read via socket events
+      // Local state is updated immediately via messageStore for instant UI updates
+      
+    } catch (error: any) {
+      debugLog('[ApiClient] Could not mark as read:', error);
     }
   }
 
@@ -989,7 +1260,7 @@ class ApiClient {
       );
       return response.data;
     } catch (error) {
-      console.log('Weather API error, returning defaults:', error);
+      debugLog('Weather API error, returning defaults:', error);
       // Return default weather on error (matching Android behavior)
       return {
         temperature: 15,
@@ -1175,12 +1446,12 @@ class ApiClient {
    */
   async updateFCMToken(fcmToken: string): Promise<void> {
     try {
-      console.log('📱 ApiClient: Updating FCM token...');
+      debugLog('📱 ApiClient: Updating FCM token...');
       await this.request<{ success: boolean }>('/fcm/token', {
         method: 'POST',
         body: JSON.stringify({ fcm_token: fcmToken }),
       });
-      console.log('✅ ApiClient: FCM token updated successfully');
+      debugLog('✅ ApiClient: FCM token updated successfully');
     } catch (error) {
       console.error('❌ ApiClient: Failed to update FCM token:', error);
       throw error;

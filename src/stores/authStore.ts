@@ -47,8 +47,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         socketService.connect(response.accessToken, response.profile.branchId, response.profile.id);
       }
       
-      // Register FCM token for push notifications
-      notificationService.onLogin().catch((e) => console.log('Push notification setup error:', e));
+      // Register FCM token for push notifications (disabled - FCM not available)
+      // notificationService.onLogin().catch((e: unknown) => console.log('Push notification setup error:', e));
     } catch (error: any) {
       set({
         error: error.message || 'Login failed',
@@ -83,8 +83,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Disconnect socket first
       socketService.disconnect();
       
-      // Clean up push notifications
-      notificationService.onLogout().catch((e) => console.log('Push notification cleanup error:', e));
+      // Clean up push notifications (disabled - FCM not available)
+      // notificationService.onLogout().catch((e: unknown) => console.log('Push notification cleanup error:', e));
       
       await apiClient.logout();
       set({
@@ -103,19 +103,32 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const isLoggedIn = await apiClient.isLoggedIn();
       if (isLoggedIn) {
-        const profile = await apiClient.getProfile();
-        const user = await apiClient.getCurrentUser();
-        set({
-          user,
-          profile,
-          isAuthenticated: true,
-          isLoading: false,
-        });
-        
-        // Connect to Socket.IO for online presence
-        const token = await apiClient.getAuthToken();
-        if (token && profile?.branchId && profile?.id) {
-          socketService.connect(token, profile.branchId, profile.id);
+        try {
+          // Try to fetch profile - this will fail if token is invalid
+          const profile = await apiClient.getProfile();
+          const user = await apiClient.getCurrentUser();
+          set({
+            user,
+            profile,
+            isAuthenticated: true,
+            isLoading: false,
+          });
+          
+          // Connect to Socket.IO for online presence
+          const token = await apiClient.getAuthToken();
+          if (token && profile?.branchId && profile?.id) {
+            socketService.connect(token, profile.branchId, profile.id);
+          }
+        } catch (error) {
+          // Token exists but is invalid - clear auth state
+          console.log('[AuthStore] Token invalid, clearing auth state');
+          await apiClient.logout();
+          set({
+            user: null,
+            profile: null,
+            isAuthenticated: false,
+            isLoading: false,
+          });
         }
       } else {
         set({

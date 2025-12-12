@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+    AppState,
     Image,
     StyleSheet,
     Text,
@@ -9,7 +10,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import Toast from 'react-native-toast-message';
 
+import { socketService } from '../services/SocketService';
 import { useAuthStore } from '../stores/authStore';
 import { useTheme } from '../theme/ThemeContext';
 
@@ -34,7 +37,7 @@ const colors = {
 
 interface OnlineMember {
   id: string;
-  name: string;
+  name?: string;
   photoUrl?: string;
 }
 
@@ -43,6 +46,7 @@ interface TopAppBarProps {
   onSearchPress?: () => void;
   onNotificationsPress?: () => void;
   onInboxPress?: () => void;
+  onAvatarClick?: (member: OnlineMember) => void;
   notificationCount?: number;
   unreadMessagesCount?: number;
 }
@@ -52,6 +56,7 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
   onSearchPress,
   onNotificationsPress,
   onInboxPress,
+  onAvatarClick,
   notificationCount = 0,
   unreadMessagesCount = 0,
 }) => {
@@ -59,13 +64,65 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
   const { isDark, toggleTheme } = useTheme();
   const insets = useSafeAreaInsets();
   const [onlineMembers, setOnlineMembers] = useState<OnlineMember[]>([]);
+  const prevOnlineMembersRef = useRef<string[]>([]);
+  const refreshTimersRef = useRef<NodeJS.Timeout[]>([]);
 
   // Dynamic colors based on theme (matching Kotlin app)
   const surfaceColor = isDark ? colors.surfaceDark : colors.surfaceLight;
   const textColor = isDark ? colors.textPrimaryDark : colors.textPrimaryLight;
   const containerColor = isDark ? colors.primaryContainer : colors.primaryContainerLight;
 
-  // Fetch online members (excluding current user)
+  // Staggered refresh function to catch slow reconnections
+  const triggerStaggeredRefresh = useRef(() => {
+    // Clear any existing timers
+    refreshTimersRef.current.forEach(timer => clearTimeout(timer));
+    refreshTimersRef.current = [];
+
+    if (__DEV__) console.log('[TopAppBar] Starting staggered refresh sequence');
+    
+    // Immediate refresh
+    socketService.refreshOnlineMembers();
+    
+    // Refresh after 1 second
+    const timer1 = setTimeout(() => {
+      if (__DEV__) console.log('[TopAppBar] Refresh at 1s');
+      socketService.refreshOnlineMembers();
+    }, 1000);
+    
+    // Refresh after 3 seconds
+    const timer2 = setTimeout(() => {
+      if (__DEV__) console.log('[TopAppBar] Refresh at 3s');
+      socketService.refreshOnlineMembers();
+    }, 3000);
+    
+    // Refresh after 6 seconds for very slow reconnections
+    const timer3 = setTimeout(() => {
+      if (__DEV__) console.log('[TopAppBar] Final refresh at 6s');
+      socketService.refreshOnlineMembers();
+    }, 6000);
+
+    refreshTimersRef.current = [timer1, timer2, timer3];
+  }).current;
+
+  // Listen to app state changes to refresh online members when app resumes
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        if (__DEV__) console.log('[TopAppBar] App resumed - triggering staggered refresh');
+        // Clear previous online members to detect all currently online users as "new"
+        prevOnlineMembersRef.current = [];
+        triggerStaggeredRefresh();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+      // Clean up any pending timers
+      refreshTimersRef.current.forEach(timer => clearTimeout(timer));
+    };
+  }, [triggerStaggeredRefresh]);
+
+  // Fetch online members (excluding current user) + subscribe to socket updates
   useEffect(() => {
     const fetchOnlineMembers = async () => {
       if (!isAuthenticated) return;
@@ -91,15 +148,75 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
         }
       } catch (error) {
         // Silently fail - online members is not critical
-        console.log('Could not fetch online members');
+        if (__DEV__) console.log('Could not fetch online members');
       }
     };
 
     fetchOnlineMembers();
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchOnlineMembers, 30000);
-    return () => clearInterval(interval);
-  }, [profile?.id, isAuthenticated]);
+    
+    // Trigger staggered refresh on mount to catch users reconnecting
+    triggerStaggeredRefresh();
+    
+    // Subscribe to socket for REAL-TIME online members updates (like Kotlin app)
+    const unsubscribe = socketService.onOnlineMembersChange((members) => {
+      console.log('[TopAppBar] 👥 Socket online members update:', members.length, members);
+      
+      // Filter out current user
+      const others = members.filter(m => m.id !== profile?.id);
+      console.log('[TopAppBar] After filtering current user:', others.length, 'Current user ID:', profile?.id);
+      
+      // Detect newly online members and show toast
+      const currentOnlineIds = others.map(m => m.id);
+      const prevOnlineIds = prevOnlineMembersRef.current;
+      
+      console.log('[TopAppBar] Previous IDs:', prevOnlineIds);
+      console.log('[TopAppBar] Current IDs:', currentOnlineIds);
+      
+      // Detect newly online users - compare current with previous
+      const newlyOnline = others.filter(m => !prevOnlineIds.includes(m.id));
+      console.log('[TopAppBar] 🆕 Newly online users:', newlyOnline.length, newlyOnline);
+      
+      // Show toast for any newly online user (even if it's the first one after app start)
+      if (newlyOnline.length > 0) {
+        newlyOnline.forEach(member => {
+          console.log('[TopAppBar] 🟢 SHOWING TOAST for:', member.name);
+          Toast.show({
+            type: 'online',
+            text1: `${member.name || 'Someone'} is now online`,
+            position: 'bottom',
+            visibilityTime: 3000,
+          });
+        });
+      } else {
+        console.log('[TopAppBar] ⚠️ No newly online users detected');
+      }
+      
+      prevOnlineMembersRef.current = currentOnlineIds;
+      setOnlineMembers(others.slice(0, 4)); // Max 4 avatars
+    });
+    
+    // Fallback polling: only when socket disconnected
+    let interval: NodeJS.Timeout | null = null;
+    const startPolling = () => {
+      if (interval) return;
+      interval = setInterval(() => {
+        if (!socketService.isSocketConnected()) {
+          fetchOnlineMembers();
+        }
+      }, 30000);
+    };
+    
+    if (!socketService.isSocketConnected()) {
+      startPolling();
+    }
+    
+    return () => {
+      unsubscribe();
+      if (interval) clearInterval(interval);
+      // Clean up refresh timers
+      refreshTimersRef.current.forEach(timer => clearTimeout(timer));
+    };
+  }, [profile?.id, isAuthenticated, triggerStaggeredRefresh]);
 
   const getInitials = (name: string): string => {
     return name
@@ -135,16 +252,18 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
             )}
           </TouchableOpacity>
 
-          {/* Stacked Online Members Avatars (other users, not current) */}
+          {/* Stacked Online Members Avatars (other users, not current) - clickable */}
           {onlineMembers.length > 0 && (
             <View style={styles.stackedAvatars}>
               {onlineMembers.map((member, index) => (
-                <View
+                <TouchableOpacity
                   key={member.id}
                   style={[
                     styles.stackedAvatarContainer,
                     { marginLeft: index === 0 ? 0 : -12 },
                   ]}
+                  onPress={() => onAvatarClick?.(member)}
+                  activeOpacity={0.7}
                 >
                   {member.photoUrl ? (
                     <Image 
@@ -159,7 +278,7 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
                     </View>
                   )}
                   <View style={[styles.onlineIndicator, { borderColor: surfaceColor }]} />
-                </View>
+                </TouchableOpacity>
               ))}
             </View>
           )}

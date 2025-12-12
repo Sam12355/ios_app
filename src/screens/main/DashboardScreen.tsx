@@ -8,7 +8,6 @@ import {
   Text,
   TouchableOpacity,
   View,
-  Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
@@ -18,7 +17,6 @@ import GenerateMoveoutModal from '../../components/dashboard/GenerateMoveoutModa
 import MoveoutItemsModal from '../../components/dashboard/MoveoutItemsModal';
 import { CalendarEvent, MoveoutList, WeatherData } from '../../models';
 import { useAuthStore } from '../../stores/authStore';
-import { localNotificationService } from '../../services/LocalNotificationService';
 
 // Design System Colors - Matching Android app exactly
 const colors = {
@@ -320,7 +318,7 @@ const DashboardScreen = ({ navigation }: any) => {
         apiClient.getCalendarEvents(),
       ]);
 
-      // Process analytics
+      // Process analytics (errors logged by ApiClient, just use defaults)
       if (analyticsResult.status === 'fulfilled') {
         const analyticsData = analyticsResult.value;
         setStats({
@@ -329,15 +327,12 @@ const DashboardScreen = ({ navigation }: any) => {
           lowStockItems: analyticsData.lowStockItems || 0,
           criticalStockItems: analyticsData.criticalItems || 0,
         });
-      } else {
-        console.log('Stats error:', analyticsResult.reason);
       }
 
-      // Process weather
+      // Process weather (show defaults on error)
       if (weatherResult.status === 'fulfilled') {
         setWeather(weatherResult.value);
       } else {
-        console.log('Weather error:', weatherResult.reason);
         setWeather({
           temperature: 15,
           condition: 'Clear sky',
@@ -351,18 +346,14 @@ const DashboardScreen = ({ navigation }: any) => {
       if (moveoutResult.status === 'fulfilled') {
         const lists = moveoutResult.value;
         setMoveoutLists(lists.filter((l) => l.status === 'draft' || l.status === 'active'));
-      } else {
-        console.log('Moveout error:', moveoutResult.reason);
       }
 
       // Process calendar events
       if (eventsResult.status === 'fulfilled') {
         setCalendarEvents(eventsResult.value.slice(0, 5));
-      } else {
-        console.log('Calendar error:', eventsResult.reason);
       }
     } catch (error) {
-      console.log('Dashboard error:', error);
+      // Errors already logged by ApiClient with throttling
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -427,22 +418,6 @@ const DashboardScreen = ({ navigation }: any) => {
             )}
           </TouchableOpacity>
         </View>
-
-        {/* TEST Notification Button - Pull down status bar to see notification! */}
-        <TouchableOpacity
-          style={styles.testNotificationButton}
-          onPress={async () => {
-            await localNotificationService.showTestNotification();
-            Alert.alert(
-              '✅ Notification Sent!',
-              'Pull down your status bar to see the notification.',
-              [{ text: 'OK' }]
-            );
-          }}
-        >
-          <Icon name="notifications-active" size={20} color="#FFFFFF" />
-          <Text style={styles.testNotificationText}>🧪 Test Notification</Text>
-        </TouchableOpacity>
 
         {/* Stats Grid - 2x2 (Non-staff only) */}
         {showStatsGrid && (
@@ -635,22 +610,6 @@ const styles = StyleSheet.create({
   },
   refreshButton: {
     padding: 8,
-  },
-  // Test Notification Button
-  testNotificationButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#0084FF',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-    gap: 8,
-  },
-  testNotificationText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
   },
   // Stats Grid
   statsGrid: {

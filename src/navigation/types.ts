@@ -86,7 +86,7 @@ export const navigationItems: NavigationItem[] = [
   },
   {
     title: 'Stock Out',
-    route: 'Stock',
+    route: 'StockOut',
     icon: 'remove-shopping-cart',
     allowedRoles: ['manager', 'assistant_manager', 'staff'],
     description: 'Record stock outgoing transactions',

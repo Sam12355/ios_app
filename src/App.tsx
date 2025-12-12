@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { LogBox, StatusBar } from 'react-native';
+import { LogBox, StatusBar, View, Text, Animated, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast, { BaseToast, ErrorToast } from 'react-native-toast-message';
@@ -13,8 +13,19 @@ LogBox.ignoreLogs([
   'Non-serializable values were found in the navigation state',
 ]);
 
+// Custom Online Toast
+const OnlineToast = (props: any) => (
+  <View style={styles.onlineToastContainer}>
+    <View style={styles.onlineBadge} />
+    <View style={{ flex: 1 }}>
+      <Text style={styles.onlineToastText}>{props.text1}</Text>
+    </View>
+  </View>
+);
+
 // Toast config matching Kotlin SnackBar style
 const toastConfig = {
+  online: OnlineToast,
   success: (props: any) => (
     <BaseToast
       {...props}
@@ -100,6 +111,37 @@ const AppContent = () => {
     </>
   );
 };
+
+const styles = StyleSheet.create({
+  onlineToastContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1E1E1E',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginHorizontal: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#22C55E',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  onlineToastText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  onlineBadge: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#22C55E',
+    marginRight: 10,
+  },
+});
 
 const App = () => {
   return (

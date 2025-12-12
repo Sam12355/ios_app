@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -20,10 +20,11 @@ import { Thread } from '../../models/Inventory';
 import { MainStackParamList } from '../../navigation/types';
 import { socketService } from '../../services/SocketService';
 import { useAuthStore } from '../../stores/authStore';
+import { useMessageStore } from '../../stores/messageStore';
 
 // API config - same as TopAppBar and ApiClient
 const API_BASE_URL = 'https://stock-nexus-84-main-2-1.onrender.com/api';
-const TOKEN_KEY = '@stocknexus/auth_token';
+const TOKEN_KEY = '@stocknexus_access_token';
 type NavigationProp = NativeStackNavigationProp<MainStackParamList>;
 
 // Online member interface
@@ -36,6 +37,8 @@ interface OnlineMember {
 export const InboxScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { profile: currentUser } = useAuthStore();
+  // Subscribe to messages state directly (re-renders when messages change!)
+  const messages = useMessageStore((state) => state.messages);
   
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,7 +66,6 @@ export const InboxScreen: React.FC = () => {
         const onlineIds = (data || [])
           .filter((member: OnlineMember) => member.id !== currentUser?.id)
           .map((member: OnlineMember) => member.id);
-        console.log('[InboxScreen] Online members:', onlineIds.length, onlineIds);
         setOnlineMembers(onlineIds);
       }
     } catch (error) {
@@ -71,31 +73,38 @@ export const InboxScreen: React.FC = () => {
     }
   }, [currentUser?.id]);
 
-  useEffect(() => {
-    fetchOnlineMembers();
-    
-    // Subscribe to socket service for real-time online status updates
-    const unsubscribe = socketService.onOnlineMembersChange((members) => {
-      const ids = members
-        .filter(m => m.id !== currentUser?.id)
-        .map(m => m.id);
-      console.log('[InboxScreen] Socket online members update:', ids.length);
-      setOnlineMembers(ids);
-    });
-    
-    // Also poll API as fallback every 30 seconds
-    const interval = setInterval(fetchOnlineMembers, 30000);
-    
-    return () => {
-      unsubscribe();
-      clearInterval(interval);
-    };
-  }, [fetchOnlineMembers, currentUser?.id]);
+  // Debounce timer to prevent rapid successive calls
+  const fetchTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+  
+  // Helper function to calculate local unread count for a conversation
+  const getLocalUnreadCount = useCallback((partnerId: string): number => {
+    if (!currentUser?.id || !messages[partnerId]) return -1; // -1 means no local data
+    return messages[partnerId].filter(
+      (msg) => msg.sender_id === partnerId && !msg.read_at
+    ).length;
+  }, [messages, currentUser?.id]);
 
-  const fetchThreads = useCallback(async () => {
+  const fetchThreads = useCallback(async (immediate = false) => {
+    // If not immediate, debounce the call
+    if (!immediate && fetchTimerRef.current) {
+      if (__DEV__) console.log('[InboxScreen] Debouncing fetchThreads call');
+      return;
+    }
+
     try {
+      // Set debounce timer (500ms for faster response)
+      if (!immediate) {
+        fetchTimerRef.current = setTimeout(() => {
+          fetchTimerRef.current = null;
+        }, 500);
+      }
+
+      // Fetch threads and unread counts - but use cached results when available
       const data = await apiClient.getThreads();
-      console.log('[InboxScreen] Got threads:', data?.length || 0);
+      const unreadCounts = await apiClient.getUnreadCountsPerConversation();
+      
+      if (__DEV__) console.log('[InboxScreen] Got threads:', data?.length || 0);
+      if (__DEV__) console.log('[InboxScreen] Unread counts (API):', unreadCounts);
       
       if (!data || data.length === 0) {
         setThreads([]);
@@ -103,7 +112,6 @@ export const InboxScreen: React.FC = () => {
       }
 
       // Map ALL threads - backend provides other_user_name and other_user_photo
-      // Don't filter - backend already handles the "other user" logic
       const mappedThreads: Thread[] = data.map((item: any) => {
         // Backend provides other_user_name and other_user_photo, and other_user_id
         const displayName = item.other_user_name || item.displayName || 'Unknown User';
@@ -112,18 +120,27 @@ export const InboxScreen: React.FC = () => {
         // Use other_user_id from backend (like Kotlin uses user2Id)
         const otherUserId = item.other_user_id || item.user2_id || item.user2Id || item.participant_id || '';
 
+        // KOTLIN APPROACH: Prefer LOCAL unread count (instant updates!)
+        // -1 means no messages loaded for this conversation yet, use API count
+        const localCount = getLocalUnreadCount(otherUserId);
+        const apiCount = unreadCounts[otherUserId] || item.unread_count || item.unreadCount || 0;
+        // Use local count if we have messages loaded (even if 0), otherwise use API
+        const unreadCount = localCount >= 0 ? localCount : apiCount;
+        
+        if (__DEV__) console.log('[InboxScreen] Thread', displayName, '- Local:', localCount, 'API:', apiCount, '→ Using:', unreadCount);
+
         return {
           id: item.id || item.thread_id || `thread-${Date.now()}`,
           participant_id: otherUserId,
           participant_name: displayName,
           participant_avatar: displayPhoto,
           last_message: lastMessage,
-          unread_count: item.unread_count || item.unreadCount || 0,
+          unread_count: unreadCount,
           updated_at: item.updated_at || item.updatedAt || new Date().toISOString(),
         };
       });
 
-      console.log('[InboxScreen] Mapped threads:', mappedThreads.length);
+      console.log('[InboxScreen] Mapped threads with unread counts:', mappedThreads.map(t => ({ name: t.participant_name, unread: t.unread_count })));
       setThreads(mappedThreads);
     } catch (error) {
       console.error('[InboxScreen] Failed to fetch threads:', error);
@@ -131,11 +148,123 @@ export const InboxScreen: React.FC = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [currentUser?.id]);
+  }, [currentUser?.id, getLocalUnreadCount]);
 
   useEffect(() => {
     fetchThreads();
   }, [fetchThreads]);
+
+  // INSTANT UPDATE: When messages in store change, update thread unread counts immediately
+  // This matches Kotlin's reactive approach where UI updates automatically when state changes
+  // IMPORTANT: Only increase counts, never decrease (decreasing only happens when marking as read)
+  useEffect(() => {
+    if (threads.length === 0) return;
+    
+    // Recalculate unread counts for existing threads from local state
+    setThreads((prevThreads) => {
+      let hasChanges = false;
+      const updated = prevThreads.map((thread) => {
+        if (!thread.participant_id) return thread;
+        const localCount = getLocalUnreadCount(thread.participant_id);
+        // Only update if:
+        // 1. We have messages loaded locally (localCount >= 0)
+        // 2. Local count is HIGHER than current count (prevents badge disappearing)
+        // Never decrease here - that only happens when explicitly marking as read
+        if (localCount >= 0 && localCount > thread.unread_count) {
+          hasChanges = true;
+          console.log('[InboxScreen] 🔄 Instant update:', thread.participant_name, 'unread:', thread.unread_count, '→', localCount);
+          return { ...thread, unread_count: localCount };
+        }
+        return thread;
+      });
+      return hasChanges ? updated : prevThreads;
+    });
+  }, [messages, getLocalUnreadCount]); // Re-run when messages change
+
+  // Socket listeners for real-time updates
+  useEffect(() => {
+    fetchOnlineMembers();
+    
+    // Subscribe to socket service for real-time online status updates
+    const unsubscribe = socketService.onOnlineMembersChange((members) => {
+      const ids = members
+        .filter(m => m.id !== currentUser?.id)
+        .map(m => m.id);
+      if (__DEV__) console.log('[InboxScreen] Socket online members update:', ids.length);
+      setOnlineMembers(ids);
+    });
+    
+    // Listen for new messages to update threads INSTANTLY (no API calls!)
+    const handleNewMessage = (data: any) => {
+      if (__DEV__) console.log('[InboxScreen] 📬 New message received via socket - instant update');
+      const senderId = data?.sender_id || data?.senderId;
+      const messageContent = data?.content || data?.message || '';
+      const timestamp = data?.sent_at || data?.timestamp || new Date().toISOString();
+      
+      if (!senderId) return;
+      
+      // INSTANT update: Update thread with incremented unread count
+      // The useEffect will sync it later from messageStore, but this gives immediate feedback
+      setThreads(prevThreads => {
+        const existingThread = prevThreads.find(t => t.participant_id === senderId);
+        
+        if (existingThread) {
+          // Update last message, timestamp, and increment unread count immediately
+          if (__DEV__) console.log('[InboxScreen] Updating thread for:', senderId, '- incrementing unread count from', existingThread.unread_count);
+          return prevThreads.map(thread => {
+            if (thread.participant_id === senderId) {
+              return {
+                ...thread,
+                unread_count: (thread.unread_count || 0) + 1,
+                last_message: messageContent,
+                updated_at: timestamp,
+              };
+            }
+            return thread;
+          }).sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+        } else {
+          // New thread - fetch full thread list (only if new conversation)
+          fetchThreads(true);
+          return prevThreads;
+        }
+      });
+      
+      if (__DEV__) console.log('[InboxScreen] ✅ Thread updated instantly - unread count incremented');
+    };
+    
+    socketService.on('new_message', handleNewMessage);
+    
+    // Fallback polling: only when socket disconnected
+    let interval: NodeJS.Timeout | null = null;
+    const startPolling = () => {
+      if (interval) return;
+      interval = setInterval(() => {
+        if (!socketService.isSocketConnected()) {
+          fetchOnlineMembers();
+        }
+      }, 30000);
+    };
+    
+    if (!socketService.isSocketConnected()) {
+      startPolling();
+    }
+    
+    return () => {
+      unsubscribe();
+      socketService.off('new_message', handleNewMessage);
+      if (interval) clearInterval(interval);
+    };
+  }, [fetchOnlineMembers, fetchThreads, currentUser?.id]);
+
+  // Refresh threads when screen gains focus (e.g., coming back from ChatScreen)
+  // This ensures unread counts are updated after reading messages
+  useFocusEffect(
+    useCallback(() => {
+      if (__DEV__) console.log('[InboxScreen] Screen focused - refreshing threads');
+      fetchThreads(true); // immediate = true, skip debounce
+      fetchOnlineMembers();
+    }, [fetchThreads, fetchOnlineMembers])
+  );
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -171,6 +300,7 @@ export const InboxScreen: React.FC = () => {
         ]}
         onPress={() => {
           if (item.participant_id) {
+            console.log('🔵 [DEBUG] Tapped on thread:', item.participant_name, 'unread:', item.unread_count);
             navigation.navigate('Chat', { 
               userId: item.participant_id,
               userName: item.participant_name,

@@ -1,11 +1,15 @@
 import { createDrawerNavigator } from '@react-navigation/drawer';
-import { NavigationContainer, useNavigation } from '@react-navigation/native';
+import { NavigationContainer, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
+import apiClient from '../api/ApiClient';
 import { UserRole } from '../models';
+import { socketService } from '../services/SocketService';
+import { localNotificationService } from '../services/LocalNotificationService';
 import { useAuthStore } from '../stores/authStore';
+import { useMessageStore, initMessageStoreSocketListeners } from '../stores/messageStore';
 import { useTheme } from '../theme/ThemeContext';
 import { Colors } from '../theme/colors';
 import { AuthStackParamList, DrawerParamList, getNavigationItemsForRole, MainStackParamList, RootStackParamList } from './types';
@@ -53,6 +57,10 @@ const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const MainStack = createNativeStackNavigator<MainStackParamList>();
 const Drawer = createDrawerNavigator<DrawerParamList>();
 
+const debugLog = (...args: any[]) => {
+  if (__DEV__) console.log(...args);
+};
+
 const AuthNavigator = () => {
   const { colors } = useTheme();
   
@@ -74,12 +82,138 @@ const AuthNavigator = () => {
 const DrawerNavigator = () => {
   const { colors, isDark } = useTheme();
   const { profile } = useAuthStore();
+  // Subscribe to messages state directly (Kotlin approach - re-renders when messages change!)
+  const messages = useMessageStore((state) => state.messages);
+  const currentUserId = useMessageStore((state) => state.currentUserId);
+  const currentChatUserId = useMessageStore((state) => state.currentChatUserId);
+  const setCurrentUserId = useMessageStore((state) => state.setCurrentUserId);
+  
+  // Calculate unread count from local messages (matches Kotlin exactly!)
+  // messages.values.flatten().count { message -> message.senderId != currentUserState.id && message.readAt == null }
+  const localUnreadCount = React.useMemo(() => {
+    if (!currentUserId) return 0;
+    let total = 0;
+    Object.entries(messages).forEach(([partnerId, msgList]) => {
+      msgList.forEach((msg) => {
+        if (msg.sender_id !== currentUserId && !msg.read_at) {
+          total++;
+        }
+      });
+    });
+    debugLog('[AppNavigator] 📊 Calculated local unread count:', total, 'from', Object.keys(messages).length, 'conversations');
+    return total;
+  }, [messages, currentUserId]);
+  
   const navigation = useNavigation<any>();
   const userRole = (profile?.role || 'staff') as UserRole;
   const navItems = getNavigationItemsForRole(userRole);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  
+  // Initialize message store socket listeners once
+  useEffect(() => {
+    initMessageStoreSocketListeners();
+  }, []);
+  
+  // Set current user ID in message store
+  useEffect(() => {
+    if (profile?.id) {
+      setCurrentUserId(profile.id);
+      debugLog('[AppNavigator] 👤 Set currentUserId:', profile.id);
+    }
+  }, [profile?.id, setCurrentUserId]);
+  
+  // Use LOCAL unread count for immediate updates (Kotlin approach!)
+  // Only fall back to API count when NO conversations are loaded in store
+  // (localUnreadCount=0 is valid when all messages are read!)
+  const hasLocalMessages = Object.keys(messages).length > 0;
+  const displayUnreadCount = hasLocalMessages ? localUnreadCount : unreadMessagesCount;
+  
+  // Debug logging for badge updates
+  useEffect(() => {
+    debugLog('[AppNavigator] 🏷️ Badge update: local=' + localUnreadCount + ', api=' + unreadMessagesCount + ', display=' + displayUnreadCount + ', hasLocal=' + hasLocalMessages);
+  }, [localUnreadCount, unreadMessagesCount, displayUnreadCount, hasLocalMessages]);
+
+  // Fetch unread message count (for initial load and fallback)
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const count = await apiClient.getTotalUnreadMessageCount();
+      if (count === null) {
+        debugLog('[AppNavigator] ⚠️ Unread fetch failed - skipping badge update');
+        return;
+      }
+      debugLog('[AppNavigator] 📊 API unread count:', count, 'Local count:', localUnreadCount);
+      setUnreadMessagesCount(count);
+    } catch (error) {
+      console.error('[AppNavigator] Error fetching unread count:', error);
+    }
+  }, [localUnreadCount]);
+
+  // Fetch on mount and set up polling
+  useEffect(() => {
+    fetchUnreadCount();
+    
+    // REMOVED POLLING: Local count from message store is primary source
+    // Only fetch on mount, socket events will keep it updated
+    // const interval = setInterval(fetchUnreadCount, 90000);
+    
+    // Listen for new messages via socket to update badge immediately
+    const handleNewMessage = (data: any) => {
+      const senderId = data?.sender_id || data?.senderId;
+      if (senderId && senderId !== profile?.id) {
+        // DON'T increment if user is currently viewing that chat!
+        if (currentChatUserId === senderId) {
+          debugLog('[AppNavigator] 📬 New message from current chat - NOT incrementing badge');
+          return;
+        }
+        // Increment API-based unread count as fallback
+        setUnreadMessagesCount(prev => prev + 1);
+        debugLog('[AppNavigator] 📬 New message received, incrementing unread count');
+      }
+    };
+    
+    // Listen for messages being read - no need to fetch API anymore!
+    // The local message store handles this automatically
+    const handleMessagesRead = (data: any) => {
+      debugLog('[AppNavigator] 📖 Messages marked as read - local store will update');
+      // Only fetch API as a background sync (not critical path)
+      setTimeout(() => {
+        fetchUnreadCount();
+      }, 2000); // 2s delay - not urgent since local state is primary
+    };
+    
+    socketService.on('new_message', handleNewMessage);
+    socketService.on('messagesRead', handleMessagesRead);
+    socketService.on('message_read', handleMessagesRead);
+    
+    return () => {
+      // No interval to clear anymore
+      socketService.off('new_message', handleNewMessage);
+      socketService.off('messagesRead', handleMessagesRead);
+      socketService.off('message_read', handleMessagesRead);
+    };
+  }, [fetchUnreadCount, profile?.id, currentChatUserId]);
+
+  // Set up notification tap handler to navigate to chat
+  useEffect(() => {
+    localNotificationService.setNotificationTapListener((data) => {
+      debugLog('[AppNavigator] 📱 Notification tapped:', data);
+      
+      if (data.userId && data.type === 'new_message') {
+        // Navigate to Chat screen with the sender's info
+        navigation.navigate('Chat', {
+          userId: data.userId,
+          userName: data.userName || 'User',
+        });
+      }
+    });
+
+    return () => {
+      localNotificationService.setNotificationTapListener(null);
+    };
+  }, [navigation]);
 
   return (
     <>
@@ -105,8 +239,16 @@ const DrawerNavigator = () => {
               onSearchPress={() => setShowSearchModal(true)}
               onNotificationsPress={() => setShowNotificationsDropdown(true)}
               onInboxPress={() => navigation.navigate('Inbox')}
+              onAvatarClick={(member) => {
+                // Navigate to Chat screen when avatar is clicked
+                navigation.navigate('Chat', {
+                  userId: member.id,
+                  userName: member.name || 'User',
+                  userPhoto: member.photoUrl,
+                });
+              }}
               notificationCount={notificationCount}
-              unreadMessagesCount={0}
+              unreadMessagesCount={displayUnreadCount}
             />
           ),
           drawerActiveBackgroundColor: Colors.primary + '20',

@@ -6,6 +6,14 @@ import { localNotificationService } from './LocalNotificationService';
 
 const SOCKET_URL = 'https://stock-nexus-84-main-2-1.onrender.com';
 
+const debugLog = (...args: any[]) => {
+  if (__DEV__) console.log(...args);
+};
+
+const debugWarn = (...args: any[]) => {
+  if (__DEV__) console.warn(...args);
+};
+
 interface OnlineMember {
   id: string;
   name?: string;
@@ -32,10 +40,10 @@ class SocketService {
     // Always disconnect and reconnect to ensure fresh connection
     this.disconnect();
 
-    console.log('[SocketService] 🔌 Connecting to Socket.IO server...');
-    console.log('[SocketService] 🔌 Branch ID:', branchId);
-    console.log('[SocketService] 🔌 User ID:', userId);
-    console.log('[SocketService] 🔌 Server URL:', SOCKET_URL);
+    debugLog('[SocketService] 🔌 Connecting to Socket.IO server...');
+    debugLog('[SocketService] 🔌 Branch ID:', branchId);
+    debugLog('[SocketService] 🔌 User ID:', userId);
+    debugLog('[SocketService] 🔌 Server URL:', SOCKET_URL);
 
     this.currentToken = token;
     this.currentBranchId = branchId;
@@ -52,28 +60,28 @@ class SocketService {
     });
 
     this.socket.on('connect', () => {
-      console.log('[SocketService] ✅ Connected to Socket.IO server:', this.socket?.id);
+      debugLog('[SocketService] ✅ Connected to Socket.IO server:', this.socket?.id);
       this.isConnected = true;
 
       // Join the branch room
       if (this.currentBranchId) {
         this.socket?.emit('join-branch', this.currentBranchId);
-        console.log('[SocketService] 👥 Joined branch room:', this.currentBranchId);
+        debugLog('[SocketService] 👥 Joined branch room:', this.currentBranchId);
       }
 
       // Join personal user room for direct messages
       if (this.currentUserId) {
         this.socket?.emit('join-room', this.currentUserId);
-        console.log('[SocketService] 🚪 Joined personal room:', this.currentUserId);
+        debugLog('[SocketService] 🚪 Joined personal room:', this.currentUserId);
       }
 
       // Request online members list
       this.socket?.emit('get-online-members');
-      console.log('[SocketService] 📡 Requesting online members list');
+      debugLog('[SocketService] 📡 Requesting online members list');
     });
 
     this.socket.on('disconnect', (reason) => {
-      console.log('[SocketService] ❌ Disconnected from Socket.IO server:', reason);
+      debugLog('[SocketService] ❌ Disconnected from Socket.IO server:', reason);
       this.isConnected = false;
     });
 
@@ -83,7 +91,7 @@ class SocketService {
     });
 
     this.socket.on('reconnect', (attemptNumber) => {
-      console.log('[SocketService] 🔄 Reconnected after', attemptNumber, 'attempts');
+      debugLog('[SocketService] 🔄 Reconnected after', attemptNumber, 'attempts');
       this.isConnected = true;
 
       // Rejoin rooms after reconnection
@@ -94,6 +102,16 @@ class SocketService {
         this.socket?.emit('join-room', this.currentUserId);
       }
       this.socket?.emit('get-online-members');
+    });
+
+    // Handle reconnect attempts - request online members during reconnection
+    this.socket.on('reconnect_attempt', () => {
+      debugLog('[SocketService] 🔄 Reconnect attempt...');
+    });
+
+    // When connection is restored, immediately request fresh online members list
+    this.socket.on('reconnecting', () => {
+      debugLog('[SocketService] 🔄 Reconnecting...');
     });
 
     // Online presence events
@@ -110,7 +128,7 @@ class SocketService {
             }
           }
         }
-        console.log('[SocketService] 👥 Online members updated:', members.length);
+        debugLog('[SocketService] 👥 Online members updated:', members.length);
         this._onlineMembers = members;
         this.notifyOnlineMembersChange();
       } catch (e) {
@@ -125,7 +143,7 @@ class SocketService {
         const photoUrl = data?.photoUrl || data?.photo_url || null;
         if (id && !this._onlineMembers.some(m => m.id === id)) {
           this._onlineMembers = [{ id, name, photoUrl }, ...this._onlineMembers];
-          console.log('[SocketService] ➕ User online:', id, name);
+          debugLog('[SocketService] ➕ User online:', id, name);
           this.notifyOnlineMembersChange();
         }
       } catch (e) {
@@ -138,7 +156,7 @@ class SocketService {
         const id = data?.id || data?.userId || '';
         if (id) {
           this._onlineMembers = this._onlineMembers.filter(m => m.id !== id);
-          console.log('[SocketService] ➖ User offline:', id);
+          debugLog('[SocketService] ➖ User offline:', id);
           this.notifyOnlineMembersChange();
         }
       } catch (e) {
@@ -148,7 +166,7 @@ class SocketService {
 
     // Messaging events
     this.socket.on('new_message', (data: any) => {
-      console.log('[SocketService] 💬 New message received:', JSON.stringify(data).substring(0, 200));
+      debugLog('[SocketService] 💬 New message received:', JSON.stringify(data).substring(0, 200));
       this.notifyListeners('new_message', data);
       
       // Trigger local notification if message is from another user
@@ -157,43 +175,43 @@ class SocketService {
         const senderName = data?.sender_name || data?.senderName || 'New Message';
         const content = data?.content || data?.message || 'You have a new message';
         const senderPhoto = data?.sender_photo || data?.senderPhoto;
-        
-        console.log('[SocketService] 📱 Triggering local notification for message from:', senderName);
+
+        debugLog('[SocketService] 📱 Triggering local notification for message from:', senderName);
         localNotificationService.showMessageNotification(senderId, senderName, content, senderPhoto);
       }
     });
 
     this.socket.on('user_typing', (data: any) => {
-      console.log('[SocketService] ⌨️ User typing:', data);
+      debugLog('[SocketService] ⌨️ User typing:', data);
       this.notifyListeners('typing', data);
       this.notifyListeners('user_typing', data);
     });
 
     this.socket.on('user_stop_typing', (data: any) => {
-      console.log('[SocketService] ⏸️ User stop typing:', data);
+      debugLog('[SocketService] ⏸️ User stop typing:', data);
       this.notifyListeners('stop-typing', data);
       this.notifyListeners('user_stop_typing', data);
     });
 
     // Also listen for 'typing' and 'stop-typing' events directly
     this.socket.on('typing', (data: any) => {
-      console.log('[SocketService] ⌨️ Typing event:', data);
+      debugLog('[SocketService] ⌨️ Typing event:', data);
       this.notifyListeners('typing', data);
     });
 
     this.socket.on('stop-typing', (data: any) => {
-      console.log('[SocketService] ⏸️ Stop-typing event:', data);
+      debugLog('[SocketService] ⏸️ Stop-typing event:', data);
       this.notifyListeners('stop-typing', data);
     });
 
     this.socket.on('messageDelivered', (data: any) => {
-      console.log('[SocketService] ✓ Message delivered:', data);
+      debugLog('[SocketService] ✓ Message delivered:', data);
       this.notifyListeners('message_delivered', data);
       this.notifyListeners('messageDelivered', data);
     });
 
     this.socket.on('messagesRead', (data: any) => {
-      console.log('[SocketService] ✓✓ Messages read:', data);
+      debugLog('[SocketService] ✓✓ Messages read:', data);
       this.notifyListeners('message_read', data);
       this.notifyListeners('messagesRead', data);
     });
@@ -203,7 +221,7 @@ class SocketService {
 
   disconnect() {
     if (this.socket) {
-      console.log('[SocketService] 🔌 Disconnecting from Socket.IO server...');
+      debugLog('[SocketService] 🔌 Disconnecting from Socket.IO server...');
       this.socket.disconnect();
       this.socket = null;
       this.isConnected = false;
@@ -276,7 +294,7 @@ class SocketService {
     if (this.socket?.connected) {
       this.socket.emit(event, data);
     } else {
-      console.warn('[SocketService] Cannot emit, socket not connected');
+      debugWarn('[SocketService] Cannot emit, socket not connected');
     }
   }
 
@@ -291,7 +309,7 @@ class SocketService {
 
   // Mark messages as read - matches Kotlin: markMessagesRead with conversationPartnerId
   emitMarkRead(conversationPartnerId: string) {
-    console.log('[SocketService] 👁️ Emitting markMessagesRead for:', conversationPartnerId);
+    debugLog('[SocketService] 👁️ Emitting markMessagesRead for:', conversationPartnerId);
     this.emit('markMessagesRead', { conversationPartnerId });
   }
 
@@ -304,8 +322,16 @@ class SocketService {
     return this.isConnected && this.socket?.connected === true;
   }
 
+  // Manually request fresh online members list (call this when app resumes)
+  refreshOnlineMembers() {
+    if (this.isSocketConnected()) {
+      debugLog('[SocketService] 🔄 Manually requesting fresh online members list');
+      this.socket?.emit('get-online-members');
+    }
+  }
+
   forceReconnect() {
-    console.log('[SocketService] 🔄 Forcing reconnection...');
+    debugLog('[SocketService] 🔄 Forcing reconnection...');
     if (this.currentToken && this.currentBranchId && this.currentUserId) {
       this.connect(this.currentToken, this.currentBranchId, this.currentUserId);
     }
