@@ -36,6 +36,20 @@ const debugWarn = (...args: any[]) => {
   if (__DEV__) console.warn(...args);
 };
 
+// Cache keys for AsyncStorage
+const CACHE_KEYS = {
+  MESSAGES: (userId: string) => `@chat_messages_${userId}`,
+  USER_PROFILE: (userId: string) => `@user_profile_${userId}`,
+  ONLINE_STATUS: (userId: string) => `@online_status_${userId}`,
+};
+
+// Cache expiry times
+const CACHE_EXPIRY = {
+  MESSAGES: 5 * 60 * 1000, // 5 minutes
+  USER_PROFILE: 30 * 60 * 1000, // 30 minutes
+  ONLINE_STATUS: 60 * 1000, // 1 minute
+};
+
 // Message interface matching Kotlin
 interface ChatMessage {
   id: string;
@@ -214,9 +228,42 @@ export const ChatScreen: React.FC = () => {
     try {
       debugLog('🔵 [DEBUG] Fetching messages for user:', userId, skipCache ? '(forced)' : '(cached)');
       
+      // Try to load from AsyncStorage cache first for INSTANT display
+      if (!skipCache) {
+        try {
+          const cacheKey = CACHE_KEYS.MESSAGES(userId);
+          const cached = await AsyncStorage.getItem(cacheKey);
+          if (cached) {
+            const { data: cachedData, timestamp } = JSON.parse(cached);
+            const age = Date.now() - timestamp;
+            
+            // Use cached data if less than 5 minutes old
+            if (age < CACHE_EXPIRY.MESSAGES) {
+              debugLog('💾 [CACHE HIT] Using cached messages, age:', Math.round(age / 1000), 's');
+              
+              // Display cached messages immediately
+              const sortedMessages = cachedData.sort((a: any, b: any) => 
+                new Date(a.sent_at || a.created_at || 0).getTime() - 
+                new Date(b.sent_at || b.created_at || 0).getTime()
+              );
+              setAllMessages(sortedMessages);
+              const messagesToDisplay = sortedMessages.slice(-displayCount).reverse();
+              setMessages(messagesToDisplay);
+              setLoading(false);
+              
+              // Still fetch in background to update
+              debugLog('🔄 [CACHE] Fetching fresh data in background...');
+            }
+          }
+        } catch (cacheError) {
+          debugLog('⚠️ [CACHE] Error reading cache:', cacheError);
+        }
+      }
+      
       // If forcing fresh, clear cache first
       if (skipCache) {
         apiClient.clearMessageCache(userId);
+        await AsyncStorage.removeItem(CACHE_KEYS.MESSAGES(userId));
       }
       
       const data = await apiClient.getMessages(userId);
@@ -255,6 +302,19 @@ export const ChatScreen: React.FC = () => {
       // Store in normal order (oldest first) - only if we have messages!
       if (data.length > 0) {
         setStoreMessages(userId, data);
+      }
+      
+      // Cache messages in AsyncStorage for instant loading next time
+      try {
+        const cacheKey = CACHE_KEYS.MESSAGES(userId);
+        const cacheData = JSON.stringify({
+          data: sortedMessages,
+          timestamp: Date.now(),
+        });
+        await AsyncStorage.setItem(cacheKey, cacheData);
+        debugLog('💾 [CACHE] Saved messages to cache');
+      } catch (cacheError) {
+        debugLog('⚠️ [CACHE] Error saving to cache:', cacheError);
       }
 
       debugLog('[ChatScreen] 📦 Showing', messagesToDisplay.length, 'of', data.length, 'total messages');
@@ -302,6 +362,23 @@ export const ChatScreen: React.FC = () => {
       return;
     }
     
+    // Check cache first
+    try {
+      const cacheKey = CACHE_KEYS.ONLINE_STATUS(userId);
+      const cached = await AsyncStorage.getItem(cacheKey);
+      if (cached) {
+        const { status, timestamp } = JSON.parse(cached);
+        const age = Date.now() - timestamp;
+        if (age < CACHE_EXPIRY.ONLINE_STATUS) {
+          setIsOnline(status);
+          debugLog('💾 [CACHE HIT] Online status from cache:', status);
+          return; // Use cached status, no API call needed
+        }
+      }
+    } catch (cacheError) {
+      debugLog('⚠️ [CACHE] Error reading online status cache:', cacheError);
+    }
+    
     // Fallback to API call
     try {
       const token = await AsyncStorage.getItem(TOKEN_KEY);
@@ -317,7 +394,20 @@ export const ChatScreen: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         const onlineIds = (data || []).map((m: any) => m.id);
-        setIsOnline(onlineIds.includes(userId));
+        const status = onlineIds.includes(userId);
+        setIsOnline(status);
+        
+        // Cache the online status
+        try {
+          const cacheKey = CACHE_KEYS.ONLINE_STATUS(userId);
+          await AsyncStorage.setItem(cacheKey, JSON.stringify({
+            status,
+            timestamp: Date.now(),
+          }));
+          debugLog('💾 [CACHE] Saved online status to cache');
+        } catch (cacheError) {
+          debugLog('⚠️ [CACHE] Error saving online status:', cacheError);
+        }
       }
     } catch (error) {
       debugLog('[ChatScreen] Could not check online status:', error);

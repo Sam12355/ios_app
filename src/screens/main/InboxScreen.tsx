@@ -27,6 +27,18 @@ const API_BASE_URL = 'https://stock-nexus-84-main-2-1.onrender.com/api';
 const TOKEN_KEY = '@stocknexus_access_token';
 type NavigationProp = NativeStackNavigationProp<MainStackParamList>;
 
+// Cache keys
+const CACHE_KEYS = {
+  THREADS: '@inbox_threads',
+  ONLINE_MEMBERS: '@inbox_online_members',
+};
+
+// Cache expiry
+const CACHE_EXPIRY = {
+  THREADS: 3 * 60 * 1000, // 3 minutes
+  ONLINE_MEMBERS: 60 * 1000, // 1 minute
+};
+
 // Online member interface
 interface OnlineMember {
   id: string;
@@ -50,6 +62,18 @@ export const InboxScreen: React.FC = () => {
   // Fetch online members - matches Kotlin implementation
   const fetchOnlineMembers = useCallback(async () => {
     try {
+      // Check cache first
+      const cached = await AsyncStorage.getItem(CACHE_KEYS.ONLINE_MEMBERS);
+      if (cached) {
+        const { data: cachedData, timestamp } = JSON.parse(cached);
+        const age = Date.now() - timestamp;
+        if (age < CACHE_EXPIRY.ONLINE_MEMBERS) {
+          setOnlineMembers(cachedData);
+          if (__DEV__) console.log('💾 [CACHE HIT] Online members from cache');
+          return; // Use cached data, skip API call
+        }
+      }
+      
       const token = await AsyncStorage.getItem(TOKEN_KEY);
       if (!token) return;
       
@@ -67,6 +91,18 @@ export const InboxScreen: React.FC = () => {
           .filter((member: OnlineMember) => member.id !== currentUser?.id)
           .map((member: OnlineMember) => member.id);
         setOnlineMembers(onlineIds);
+        
+        // Cache online members
+        try {
+          const cacheData = JSON.stringify({
+            data: onlineIds,
+            timestamp: Date.now(),
+          });
+          await AsyncStorage.setItem(CACHE_KEYS.ONLINE_MEMBERS, cacheData);
+          if (__DEV__) console.log('💾 [CACHE] Saved online members to cache');
+        } catch (cacheError) {
+          if (__DEV__) console.log('⚠️ [CACHE] Error caching online members:', cacheError);
+        }
       }
     } catch (error) {
       console.log('[InboxScreen] Could not fetch online members:', error);
@@ -97,6 +133,27 @@ export const InboxScreen: React.FC = () => {
         fetchTimerRef.current = setTimeout(() => {
           fetchTimerRef.current = null;
         }, 500);
+      }
+
+      // Try to load from cache first for INSTANT display
+      if (!immediate) {
+        try {
+          const cached = await AsyncStorage.getItem(CACHE_KEYS.THREADS);
+          if (cached) {
+            const { data: cachedData, timestamp } = JSON.parse(cached);
+            const age = Date.now() - timestamp;
+            
+            if (age < CACHE_EXPIRY.THREADS) {
+              if (__DEV__) console.log('💾 [CACHE HIT] Using cached threads, age:', Math.round(age / 1000), 's');
+              setThreads(cachedData);
+              setLoading(false);
+              // Continue to fetch fresh data in background
+              if (__DEV__) console.log('🔄 [CACHE] Fetching fresh threads in background...');
+            }
+          }
+        } catch (cacheError) {
+          if (__DEV__) console.log('⚠️ [CACHE] Error reading threads cache:', cacheError);
+        }
       }
 
       // Fetch threads and unread counts - but use cached results when available
@@ -142,6 +199,18 @@ export const InboxScreen: React.FC = () => {
 
       console.log('[InboxScreen] Mapped threads with unread counts:', mappedThreads.map(t => ({ name: t.participant_name, unread: t.unread_count })));
       setThreads(mappedThreads);
+      
+      // Cache threads for instant loading next time
+      try {
+        const cacheData = JSON.stringify({
+          data: mappedThreads,
+          timestamp: Date.now(),
+        });
+        await AsyncStorage.setItem(CACHE_KEYS.THREADS, cacheData);
+        if (__DEV__) console.log('💾 [CACHE] Saved threads to cache');
+      } catch (cacheError) {
+        if (__DEV__) console.log('⚠️ [CACHE] Error saving threads:', cacheError);
+      }
     } catch (error) {
       console.error('[InboxScreen] Failed to fetch threads:', error);
     } finally {
