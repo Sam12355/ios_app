@@ -5,6 +5,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import apiClient from '../../api/ApiClient';
 import { useAuthStore } from '../../stores/authStore';
 import { useTheme } from '../../theme/ThemeContext';
+import { BlurView } from '@react-native-community/blur';
 
 // Defaults copied from ICADeliveryScreen to keep behavior identical
 const DEFAULT_ENTRY_TYPES = [
@@ -26,7 +27,7 @@ const showToast = (type: 'success' | 'error' | 'info', text1: string, text2?: st
 };
 
 export default function AddICADeliveryModal({ visible, onClose, onSuccess }: { visible: boolean; onClose: () => void; onSuccess?: () => void; }) {
-  const { designColors } = useTheme();
+  const { designColors, isDark } = useTheme();
   const { profile } = useAuthStore();
   const userName = profile?.name || profile?.email || 'Current User';
 
@@ -89,6 +90,12 @@ export default function AddICADeliveryModal({ visible, onClose, onSuccess }: { v
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={() => { if (!isSubmitting) onClose(); }}>
       <View style={styles.overlay}>
+        <BlurView
+          style={StyleSheet.absoluteFill}
+          blurType={isDark ? 'dark' : 'xlight'}
+          blurAmount={5}
+          reducedTransparencyFallbackColor={isDark ? 'rgba(19,18,24,0.05)' : 'rgba(245,245,245,0.05)'}
+        />
         <View style={[styles.container, { backgroundColor: designColors.surfaceVariant, borderColor: designColors.border }]}> 
           {showConfirmation ? (
             <View style={{ padding: 8 }}>
