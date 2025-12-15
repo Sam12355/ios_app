@@ -496,7 +496,7 @@ const DashboardScreen = ({ navigation }: any) => {
               <Text style={styles.staffButtonText}>Stock Out</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => navigation.navigate('StockIn')}
+              onPress={() => navigation.navigate('RecordStockIn')}
               style={[styles.staffButton, { backgroundColor: designColors.primaryRed, marginLeft: 8 }]}
             >
               <Text style={styles.staffButtonText}>Record Stock In</Text>
@@ -546,11 +546,14 @@ const DashboardScreen = ({ navigation }: any) => {
           </View>
         )}
 
-        {/* Weather Widget */}
-        <WeatherWidget weather={weather} themeColors={designColors} />
+        {/* Non-staff content (weather, moveout lists, calendar, etc.) */}
+        {!isStaff && (
+          <>
+            {/* Weather Widget */}
+            <WeatherWidget weather={weather} themeColors={designColors} />
 
-        {/* Generated Moveout Lists Section */}
-        <View style={[
+            {/* Generated Moveout Lists Section */}
+            <View style={[
           styles.moveoutSection,
           {
             backgroundColor: designColors.cardBackground,

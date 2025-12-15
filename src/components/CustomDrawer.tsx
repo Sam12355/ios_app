@@ -66,7 +66,7 @@ const CustomDrawer: React.FC<DrawerContentComponentProps> = (props) => {
   const userRole = profile?.role || 'staff';
 
   const visibleItems = userRole === 'staff'
-    ? menuItems.filter((item) => ['Dashboard', 'StockOut', 'StockIn'].includes(item.screen))
+    ? menuItems.filter((item) => ['Dashboard', 'StockOut', 'RecordStockIn'].includes(item.screen))
     : menuItems;
   const currentRoute = props.state?.routes[props.state.index]?.name || 'Dashboard';
   const navigate = (screen: string) => props.navigation.navigate(screen as never);
