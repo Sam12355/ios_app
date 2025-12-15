@@ -243,8 +243,9 @@ const GenerateMoveoutModal: React.FC<GenerateMoveoutModalProps> = ({
               <Text style={[styles.loadingText, { color: designColors.textSecondary }]}>Loading stock data...</Text>
             </View>
           ) : (
-            <ScrollView 
-              style={styles.scrollContent}
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={styles.scrollContent}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
@@ -439,6 +440,8 @@ const styles = StyleSheet.create({
     width: '100%',
     maxHeight: '85%',
     overflow: 'hidden',
+    flexDirection: 'column',
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
@@ -454,7 +457,8 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   loadingContainer: {
-    padding: 60,
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
   },
   loadingText: {
@@ -464,7 +468,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
-    flexGrow: 0,
   },
   sectionLabel: {
     fontSize: 14,
