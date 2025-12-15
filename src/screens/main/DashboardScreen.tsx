@@ -595,7 +595,7 @@ const DashboardScreen = ({ navigation }: any) => {
             borderColor: designColors.border,
           }
         ]}>
-          <View style={styles.moveoutHeader}>
+            <View style={styles.moveoutHeader}>
             <View>
               <Text style={[styles.moveoutTitle, { color: designColors.textPrimary }]}>Generated Moveout Lists</Text>
               <Text style={[styles.moveoutSubtitle, { color: designColors.textSecondary }] }>
@@ -603,15 +603,6 @@ const DashboardScreen = ({ navigation }: any) => {
               </Text>
             </View>
             <View style={styles.moveoutActions}>
-              {showGenerateButton && (
-                <TouchableOpacity 
-                  style={[styles.generateButton, { backgroundColor: designColors.primaryRed }]}
-                  onPress={() => setShowGenerateModal(true)}
-                >
-                  <Icon name="add" size={16} color="#FFFFFF" />
-                  <Text style={styles.generateButtonText}>Generate</Text>
-                </TouchableOpacity>
-              )}
               <TouchableOpacity onPress={toggleHistory} style={[styles.historyButton, { backgroundColor: designColors.surface, borderWidth: 1, borderColor: designColors.border }] }>
                 <Icon name="history" size={24} color={designColors.textPrimary} />
               </TouchableOpacity>

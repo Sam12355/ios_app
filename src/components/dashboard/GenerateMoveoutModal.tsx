@@ -15,6 +15,7 @@ import {
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
 import apiClient from '../../api/ApiClient';
+import { BlurView } from '@react-native-community/blur';
 import { StockItem } from '../../models';
 import { useTheme } from '../../theme/ThemeContext';
 
@@ -54,6 +55,8 @@ const GenerateMoveoutModal: React.FC<GenerateMoveoutModalProps> = ({
 }) => {
   // Theme
   const { designColors, isDark } = useTheme();
+  const modalCardBg = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)';
+  const modalCardBorder = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
   
   // State
   const [availableStock, setAvailableStock] = useState<StockItem[]>([]);
@@ -218,7 +221,14 @@ const GenerateMoveoutModal: React.FC<GenerateMoveoutModalProps> = ({
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.modalOverlay}
       >
-        <View style={[styles.modalContent, { backgroundColor: designColors.cardBackground }]}>
+        <View style={styles.modalWrapper}>
+          <BlurView
+            style={styles.blur}
+            blurType={isDark ? 'dark' : 'xlight'}
+            blurAmount={5}
+            reducedTransparencyFallbackColor={isDark ? 'rgba(19,18,24,0.05)' : 'rgba(245,245,245,0.05)'}
+          />
+          <View style={[styles.modalContent, { backgroundColor: modalCardBg, borderColor: modalCardBorder }]}> 
           {/* Header */}
           <View style={[styles.header, { borderBottomColor: designColors.borderLight }]}>
             <Text style={[styles.headerTitle, { color: designColors.textPrimary }]}>Generate Moveout List</Text>
@@ -414,8 +424,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
   },
+  modalWrapper: {
+    width: '100%',
+    maxWidth: 900,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  blur: {
+    ...StyleSheet.absoluteFillObject,
+  },
   modalContent: {
-    backgroundColor: colors.cardBackground,
     borderRadius: 16,
     width: '100%',
     maxHeight: '85%',
