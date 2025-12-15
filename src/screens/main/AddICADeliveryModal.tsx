@@ -90,13 +90,14 @@ export default function AddICADeliveryModal({ visible, onClose, onSuccess }: { v
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={() => { if (!isSubmitting) onClose(); }}>
       <View style={styles.overlay}>
-        <BlurView
-          style={StyleSheet.absoluteFill}
-          blurType={isDark ? 'dark' : 'xlight'}
-          blurAmount={5}
-          reducedTransparencyFallbackColor={isDark ? 'rgba(19,18,24,0.05)' : 'rgba(245,245,245,0.05)'}
-        />
-        <View style={[styles.container, { backgroundColor: designColors.surfaceVariant, borderColor: designColors.border }]}> 
+        <View style={styles.containerWrapper}>
+          <BlurView
+            style={styles.blur}
+            blurType={isDark ? 'dark' : 'xlight'}
+            blurAmount={5}
+            reducedTransparencyFallbackColor={isDark ? 'rgba(19,18,24,0.05)' : 'rgba(245,245,245,0.05)'}
+          />
+          <View style={[styles.containerContent, { backgroundColor: designColors.surfaceVariant, borderColor: designColors.border }]}> 
           {showConfirmation ? (
             <View style={{ padding: 8 }}>
               <Text style={[styles.title, { color: designColors.textPrimary }]}>Confirm ICA Delivery Order</Text>
@@ -167,6 +168,7 @@ export default function AddICADeliveryModal({ visible, onClose, onSuccess }: { v
               </View>
             </>
           )}
+          </View>
         </View>
       </View>
     </Modal>
@@ -175,7 +177,9 @@ export default function AddICADeliveryModal({ visible, onClose, onSuccess }: { v
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  container: { width: '100%', maxWidth: 640, borderRadius: 12, padding: 14, borderWidth: 1 },
+  containerWrapper: { width: '100%', maxWidth: 640, borderRadius: 12, overflow: 'hidden' },
+  blur: { ...StyleSheet.absoluteFillObject },
+  containerContent: { padding: 14, borderWidth: 1 },
   title: { fontSize: 18, fontWeight: '700', marginBottom: 8 },
   preset: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, borderWidth: 1, marginRight: 8, marginBottom: 8 },
   entryRow: { padding: 12, borderRadius: 10, borderWidth: 1, marginBottom: 10 },
