@@ -411,6 +411,7 @@ const GenerateMoveoutModal: React.FC<GenerateMoveoutModalProps> = ({
             </View>
           )}
         </View>
+      </View>
       </KeyboardAvoidingView>
     </Modal>
   );
