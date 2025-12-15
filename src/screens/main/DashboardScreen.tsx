@@ -611,15 +611,15 @@ const DashboardScreen = ({ navigation }: any) => {
           )}
         </View>
 
-        {/* Calendar & Events Section (Non-staff only) */}
-        {!isStaff && (
-          <CalendarSection
-            events={calendarEvents}
-            selectedDate={new Date()}
-            onAddEvent={() => setShowAddEventModal(true)}
-            showAddButton={isManager}
-            themeColors={designColors}
-          />
+            {/* Calendar & Events Section (Non-staff only) */}
+            <CalendarSection
+              events={calendarEvents}
+              selectedDate={new Date()}
+              onAddEvent={() => setShowAddEventModal(true)}
+              showAddButton={isManager}
+              themeColors={designColors}
+            />
+          </>
         )}
 
         <View style={{ height: 40 }} />
