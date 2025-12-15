@@ -95,7 +95,7 @@ export const navigationItems: NavigationItem[] = [
     title: 'ICA Delivery',
     route: 'ICADelivery',
     icon: 'local-shipping',
-    allowedRoles: ['manager', 'assistant_manager'],
+    allowedRoles: ['manager', 'assistant_manager', 'staff'],
     description: 'Manage ICA delivery lists',
   },
   {
