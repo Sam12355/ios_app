@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
+  Modal,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -356,6 +357,7 @@ const DashboardScreen = ({ navigation }: any) => {
   const [selectedMoveoutList, setSelectedMoveoutList] = useState<MoveoutList | null>(null);
   const [showMoveoutItemsModal, setShowMoveoutItemsModal] = useState(false);
   const [showAddEventModal, setShowAddEventModal] = useState(false);
+  const [showIcaModal, setShowIcaModal] = useState(false);
 
   // Role checks
   const isStaff = profile?.role === 'staff';
@@ -521,7 +523,10 @@ const DashboardScreen = ({ navigation }: any) => {
 
           <TouchableOpacity
             style={[styles.bigPill, { backgroundColor: '#00A85A', marginTop: 12 }]}
-            onPress={() => navigation.navigate('ICADelivery')}
+            onPress={() => {
+              if (isStaff) setShowIcaModal(true);
+              else navigation.navigate('ICADelivery');
+            }}
             activeOpacity={0.9}
           >
             <Icon name="local-shipping" size={20} color="#FFFFFF" />
@@ -682,6 +687,24 @@ const DashboardScreen = ({ navigation }: any) => {
           loadDashboardData(true);
         }}
       />
+
+      {/* ICA Delivery Modal for staff users */}
+      <Modal visible={showIcaModal} transparent animationType="fade" onRequestClose={() => setShowIcaModal(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={{ width: '100%', maxWidth: 520, backgroundColor: designColors.cardBackground, padding: 20, borderRadius: 12, borderWidth: 1, borderColor: designColors.border }}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: designColors.textPrimary, marginBottom: 8 }}>ICA Delivery</Text>
+            <Text style={{ color: designColors.textSecondary, marginBottom: 16 }}>ICA Delivery is managed by branch managers. If you need deliveries processed, please contact your manager or raise a request.</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
+              <TouchableOpacity onPress={() => setShowIcaModal(false)} style={{ paddingVertical: 10, paddingHorizontal: 14, borderRadius: 8, marginRight: 8, backgroundColor: designColors.surface }}>
+                <Text style={{ color: designColors.textPrimary }}>Close</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => { setShowIcaModal(false); /* TODO: wire request flow */ }} style={{ paddingVertical: 10, paddingHorizontal: 14, borderRadius: 8, backgroundColor: designColors.primaryRed }}>
+                <Text style={{ color: '#FFFFFF' }}>Request Access</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
