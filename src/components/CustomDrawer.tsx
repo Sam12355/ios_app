@@ -44,13 +44,13 @@ type MenuItem = {
 
 const menuItems: MenuItem[] = [
   { label: 'Dashboard', icon: 'home', screen: 'Dashboard', roles: ['all'] },
-  { label: 'Manage Staff', icon: 'groups', screen: 'Staff', roles: ['admin', 'manager', 'assistant_manager'] },
-  { label: 'Manage Items', icon: 'inventory', screen: 'Items', roles: ['admin', 'manager', 'assistant_manager'] },
+  { label: 'Manage Staff', icon: 'groups', screen: 'Staff', roles: ['all'] },
+  { label: 'Manage Items', icon: 'inventory', screen: 'Items', roles: ['all'] },
   { label: 'Stock Out', icon: 'remove-shopping-cart', screen: 'StockOut', roles: ['all'] },
   { label: 'ICA Delivery', icon: 'local-shipping', screen: 'ICADelivery', roles: ['all'] },
   { label: 'Stock In', icon: 'add-shopping-cart', screen: 'StockIn', roles: ['all'] },
-  { label: 'Reports', icon: 'assignment', screen: 'Reports', roles: ['admin', 'manager', 'assistant_manager'] },
-  { label: 'Analytics', icon: 'insights', screen: 'Analytics', roles: ['admin', 'manager', 'assistant_manager'] },
+  { label: 'Reports', icon: 'assignment', screen: 'Reports', roles: ['all'] },
+  { label: 'Analytics', icon: 'insights', screen: 'Analytics', roles: ['all'] },
   { label: 'Settings', icon: 'settings', screen: 'Settings', roles: ['all'] },
 ];
 
@@ -65,23 +65,11 @@ const CustomDrawer: React.FC<DrawerContentComponentProps> = (props) => {
 
   const userRole = profile?.role || 'staff';
 
-  const visibleItems = menuItems.filter(
-    (item) => item.roles.includes('all') || item.roles.includes(userRole)
-  );
-
-  // Prevent staff from navigating to restricted screens
-  const restrictedForStaff = ['Items', 'Reports', 'Analytics'];
-  const safeNavigate = (screen: string) => {
-    if (userRole === 'staff' && restrictedForStaff.includes(screen)) {
-      // Optionally show a toast or alert here
-      return;
-    }
-    props.navigation.navigate(screen as never);
-  };
-
+  const visibleItems = userRole === 'staff'
+    ? menuItems.filter((item) => ['Dashboard', 'StockOut', 'StockIn'].includes(item.screen))
+    : menuItems;
   const currentRoute = props.state?.routes[props.state.index]?.name || 'Dashboard';
-
-  // Replace all uses of navigate with safeNavigate below
+  const navigate = (screen: string) => props.navigation.navigate(screen as never);
 
   // Render the drawer content
   // Swedish time state
@@ -168,7 +156,7 @@ const CustomDrawer: React.FC<DrawerContentComponentProps> = (props) => {
                     },
                   ]
                 ]}
-                onPress={() => safeNavigate(item.screen)}
+                onPress={() => navigate(item.screen)}
               >
                 <Icon
                   name={item.icon}

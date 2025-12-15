@@ -486,6 +486,24 @@ const DashboardScreen = ({ navigation }: any) => {
           </TouchableOpacity>
         </View>
 
+        {/* Staff quick actions (Staff sees a different dashboard) */}
+        {isStaff && (
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('StockOut')}
+              style={[styles.staffButton, { backgroundColor: designColors.primaryRed, marginRight: 8 }]}
+            >
+              <Text style={styles.staffButtonText}>Stock Out</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('StockIn')}
+              style={[styles.staffButton, { backgroundColor: designColors.primaryRed, marginLeft: 8 }]}
+            >
+              <Text style={styles.staffButtonText}>Record Stock In</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Stats Grid - 2x2 (Non-staff only) */}
         {showStatsGrid && (
           <View style={styles.statsGrid}>
@@ -972,6 +990,19 @@ const styles = StyleSheet.create({
   todayText: {
     fontWeight: 'bold',
     color: "#FFFFFF",
+  },
+  staffButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  staffButtonText: {
+    color: "#FFFFFF",
+    fontWeight: '600',
+    fontSize: 14,
   },
   upcomingEvents: {
     marginTop: 20,
