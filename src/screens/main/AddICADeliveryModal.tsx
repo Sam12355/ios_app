@@ -28,6 +28,8 @@ const showToast = (type: 'success' | 'error' | 'info', text1: string, text2?: st
 
 export default function AddICADeliveryModal({ visible, onClose, onSuccess }: { visible: boolean; onClose: () => void; onSuccess?: () => void; }) {
   const { designColors, isDark } = useTheme();
+  const modalCardBg = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)';
+  const modalCardBorder = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
   const { profile } = useAuthStore();
   const userName = profile?.name || profile?.email || 'Current User';
 
@@ -97,7 +99,7 @@ export default function AddICADeliveryModal({ visible, onClose, onSuccess }: { v
             blurAmount={5}
             reducedTransparencyFallbackColor={isDark ? 'rgba(19,18,24,0.05)' : 'rgba(245,245,245,0.05)'}
           />
-          <View style={[styles.containerContent, { backgroundColor: designColors.surfaceVariant, borderColor: designColors.border }]}> 
+          <View style={[styles.containerContent, { backgroundColor: modalCardBg, borderColor: modalCardBorder }]}> 
           {showConfirmation ? (
             <View style={{ padding: 8 }}>
               <Text style={[styles.title, { color: designColors.textPrimary }]}>Confirm ICA Delivery Order</Text>
