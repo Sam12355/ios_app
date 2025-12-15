@@ -17,7 +17,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useTheme } from '../../theme/ThemeContext';
 
 export const UserProfileScreen: React.FC = () => {
-  const { colors } = useTheme();
+  const { isDark, colors, designColors } = useTheme();
   const { profile, setProfile } = useAuthStore();
   
   const [loading, setLoading] = useState(false);

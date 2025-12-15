@@ -199,6 +199,107 @@ class SocketService {
       this.notifyListeners('typing', data);
     });
 
+    // Real-time notification events
+    this.socket.on('new_notification', (data: any) => {
+      console.log('[SocketService] 🔔 New notification received:', JSON.stringify(data));
+      this.notifyListeners('new_notification', data);
+
+      // Deduplication: Only show if not already shown (persisted)
+      (async () => {
+        try {
+          const id = data?.id || '';
+          if (!id) return;
+          const shownRaw = await AsyncStorage.getItem('shown_notification_ids');
+          const shown = new Set(JSON.parse(shownRaw || '[]'));
+          if (shown.has(id)) {
+            console.log('[SocketService] 🚫 Duplicate notification suppressed:', id);
+            return;
+          }
+          const title = data?.title || 'Stock Nexus';
+          const message = data?.message || data?.body || '';
+          const type = data?.type || 'general';
+          console.log('[SocketService] 📱 Triggering notifee for notification:', title);
+          await localNotificationService.showNotification(title, message, {
+            type,
+            notificationId: id,
+            message,
+          });
+          shown.add(id);
+          await AsyncStorage.setItem('shown_notification_ids', JSON.stringify(Array.from(shown)));
+        } catch (e) {
+          console.error('[SocketService] Deduplication error:', e);
+        }
+      })();
+    });
+
+    this.socket.on('stock_alert', (data: any) => {
+      console.log('[SocketService] ⚠️ Stock alert received:', JSON.stringify(data));
+      this.notifyListeners('stock_alert', data);
+
+      (async () => {
+        try {
+          const id = data?.id || data?.item_id || '';
+          if (!id) return;
+          const shownRaw = await AsyncStorage.getItem('shown_stock_alert_ids');
+          const shown = new Set(JSON.parse(shownRaw || '[]'));
+          if (shown.has(id)) {
+            console.log('[SocketService] 🚫 Duplicate stock alert suppressed:', id);
+            return;
+          }
+          const itemName = data?.item_name || data?.name || 'Item';
+          const currentQty = data?.current_quantity || data?.quantity || 0;
+          const threshold = data?.threshold_level || data?.minimum || 0;
+          const message = `${itemName} - Stock: ${currentQty}/${threshold}`;
+          console.log('[SocketService] 📱 Triggering notifee for stock alert:', itemName);
+          await localNotificationService.showNotification('⚠️ Low Stock Alert', message, {
+            type: 'stock_alert',
+            itemId: id,
+            message,
+          });
+          shown.add(id);
+          await AsyncStorage.setItem('shown_stock_alert_ids', JSON.stringify(Array.from(shown)));
+        } catch (e) {
+          console.error('[SocketService] Deduplication error:', e);
+        }
+      })();
+    });
+
+    this.socket.on('new_event', (data: any) => {
+      console.log('[SocketService] 📅 New event received:', JSON.stringify(data));
+      this.notifyListeners('new_event', data);
+
+      (async () => {
+        try {
+          const id = data?.id || '';
+          if (!id) return;
+          const shownRaw = await AsyncStorage.getItem('shown_event_ids');
+          const shown = new Set(JSON.parse(shownRaw || '[]'));
+          if (shown.has(id)) {
+            console.log('[SocketService] 🚫 Duplicate event suppressed:', id);
+            return;
+          }
+          const title = data?.title || 'Event';
+          const eventDate = data?.event_date ? new Date(data.event_date).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          }) : '';
+          const message = eventDate ? `${title} - ${eventDate}` : title;
+          console.log('[SocketService] 📱 Triggering notifee for event:', title);
+          await localNotificationService.showNotification('📅 Upcoming Event', message, {
+            type: 'event',
+            eventId: id,
+            message,
+          });
+          shown.add(id);
+          await AsyncStorage.setItem('shown_event_ids', JSON.stringify(Array.from(shown)));
+        } catch (e) {
+          console.error('[SocketService] Deduplication error:', e);
+        }
+      })();
+    });
+
     this.socket.on('stop-typing', (data: any) => {
       debugLog('[SocketService] ⏸️ Stop-typing event:', data);
       this.notifyListeners('stop-typing', data);

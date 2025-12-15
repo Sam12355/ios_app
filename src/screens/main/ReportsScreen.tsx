@@ -15,6 +15,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 
 import apiClient from '../../api/ApiClient';
 import { MovementReportItem, StockReportItem } from '../../models';
+import { useTheme } from '../../theme/ThemeContext';
 
 type ReportType = 'stock' | 'movements' | 'softdrinks';
 
@@ -46,8 +47,8 @@ interface SoftDrinksReportResponse {
   summary?: SoftDrinksSummary;
 }
 
-// Design colors matching Kotlin app
-const designColors = {
+// Static design colors for StyleSheet (dynamic colors applied inline)
+const staticDesignColors = {
   backgroundDark: '#121212',
   surfaceDark: '#1E1E1E',
   cardDark: '#252525',
@@ -66,6 +67,7 @@ const showToast = (type: 'success' | 'error' | 'info', text1: string, text2?: st
 };
 
 const ReportsScreen: React.FC = () => {
+  const { isDark, designColors } = useTheme();
   const [selectedReport, setSelectedReport] = useState<ReportType>('stock');
   const [showReportDropdown, setShowReportDropdown] = useState(false);
   
@@ -240,9 +242,9 @@ const ReportsScreen: React.FC = () => {
   // Get status color
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'critical': return designColors.dangerRed;
-      case 'low': return designColors.warningOrange;
-      default: return designColors.successGreen;
+      case 'critical': return staticDesignColors.dangerRed;
+      case 'low': return staticDesignColors.warningOrange;
+      default: return staticDesignColors.successGreen;
     }
   };
 
@@ -361,11 +363,11 @@ const ReportsScreen: React.FC = () => {
   const renderReportTypeDropdown = () => (
     <View style={styles.dropdownContainer}>
       <TouchableOpacity
-        style={styles.dropdownButton}
+        style={[styles.dropdownButton, { backgroundColor: designColors.surfaceVariant, borderColor: designColors.borderLight, ...(isDark ? {} : { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 }) }]}
         onPress={() => setShowReportDropdown(true)}
       >
         <Icon name={getReportIcon(selectedReport)} size={20} color={designColors.textPrimary} />
-        <Text style={styles.dropdownButtonText}>{getReportLabel(selectedReport)}</Text>
+        <Text style={[styles.dropdownButtonText, { color: designColors.textPrimary }]}>{getReportLabel(selectedReport)}</Text>
         <Icon name="arrow-drop-down" size={24} color={designColors.textPrimary} />
       </TouchableOpacity>
 
@@ -380,13 +382,13 @@ const ReportsScreen: React.FC = () => {
           activeOpacity={1}
           onPress={() => setShowReportDropdown(false)}
         >
-          <View style={styles.dropdownMenu}>
+          <View style={[styles.dropdownMenu, { backgroundColor: designColors.surfaceVariant, ...(isDark ? {} : { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 5 }) }]}>
             {(['stock', 'movements', 'softdrinks'] as ReportType[]).map((type) => (
               <TouchableOpacity
                 key={type}
                 style={[
                   styles.dropdownMenuItem,
-                  selectedReport === type && styles.dropdownMenuItemSelected,
+                  { backgroundColor: selectedReport === type ? (isDark ? designColors.primaryRed + '30' : designColors.primaryRed + '15') : 'transparent' },
                 ]}
                 onPress={() => {
                   setSelectedReport(type);
@@ -394,7 +396,7 @@ const ReportsScreen: React.FC = () => {
                 }}
               >
                 <Icon name={getReportIcon(type)} size={20} color={designColors.textPrimary} />
-                <Text style={styles.dropdownMenuItemText}>{getReportLabel(type)}</Text>
+                <Text style={[styles.dropdownMenuItemText, { color: designColors.textPrimary }]}>{getReportLabel(type)}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -408,17 +410,17 @@ const ReportsScreen: React.FC = () => {
     if (selectedReport !== 'movements' && selectedReport !== 'softdrinks') return null;
 
     return (
-      <View style={styles.filtersCard}>
+      <View style={[styles.filtersCard, { backgroundColor: designColors.surfaceVariant }]}>
         {selectedReport === 'movements' && (
           <View>
-            <Text style={styles.filterLabel}>Filter by Month</Text>
+            <Text style={[styles.filterLabel, { color: designColors.textPrimary }]}>Filter by Month</Text>
             <TouchableOpacity
-              style={styles.filterButton}
+              style={[styles.filterButton, { backgroundColor: designColors.cardBackground, borderColor: designColors.borderLight }]}
               onPress={() => setShowMonthDropdown(true)}
             >
-              <Icon name="calendar-today" size={18} color={designColors.textSecondary} />
-              <Text style={styles.filterButtonText}>{formatMonth(selectedMonth)}</Text>
-              <Icon name="arrow-drop-down" size={24} color={designColors.textSecondary} />
+              <Icon name="calendar-today" size={18} color={staticDesignColors.textSecondary} />
+              <Text style={[styles.filterButtonText, { color: designColors.textPrimary }]}>{formatMonth(selectedMonth)}</Text>
+              <Icon name="arrow-drop-down" size={24} color={staticDesignColors.textSecondary} />
             </TouchableOpacity>
 
             <Modal
@@ -432,21 +434,21 @@ const ReportsScreen: React.FC = () => {
                 activeOpacity={1}
                 onPress={() => setShowMonthDropdown(false)}
               >
-                <View style={styles.dropdownMenu}>
+                <View style={[styles.dropdownMenu, { backgroundColor: designColors.surfaceVariant, ...(isDark ? {} : { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 5 }) }]}>
                   <ScrollView style={{ maxHeight: 300 }}>
                     {monthOptions.map((date, index) => (
                       <TouchableOpacity
                         key={index}
                         style={[
                           styles.dropdownMenuItem,
-                          formatMonth(selectedMonth) === formatMonth(date) && styles.dropdownMenuItemSelected,
+                          { backgroundColor: formatMonth(selectedMonth) === formatMonth(date) ? (isDark ? designColors.primaryRed + '30' : designColors.primaryRed + '15') : 'transparent' },
                         ]}
                         onPress={() => {
                           setSelectedMonth(date);
                           setShowMonthDropdown(false);
                         }}
                       >
-                        <Text style={styles.dropdownMenuItemText}>{formatMonth(date)}</Text>
+                        <Text style={[styles.dropdownMenuItemText, { color: designColors.textPrimary }]}>{formatMonth(date)}</Text>
                       </TouchableOpacity>
                     ))}
                   </ScrollView>
@@ -458,14 +460,14 @@ const ReportsScreen: React.FC = () => {
 
         {selectedReport === 'softdrinks' && (
           <View>
-            <Text style={styles.filterLabel}>Time Period</Text>
+            <Text style={[styles.filterLabel, { color: designColors.textPrimary }]}>Time Period</Text>
             <TouchableOpacity
-              style={styles.filterButton}
+              style={[styles.filterButton, { backgroundColor: designColors.cardBackground, borderColor: designColors.borderLight }]}
               onPress={() => setShowWeeksDropdown(true)}
             >
-              <Icon name="date-range" size={18} color={designColors.textSecondary} />
-              <Text style={styles.filterButtonText}>{selectedWeeks} weeks</Text>
-              <Icon name="arrow-drop-down" size={24} color={designColors.textSecondary} />
+              <Icon name="date-range" size={18} color={staticDesignColors.textSecondary} />
+              <Text style={[styles.filterButtonText, { color: designColors.textPrimary }]}>{selectedWeeks} weeks</Text>
+              <Icon name="arrow-drop-down" size={24} color={staticDesignColors.textSecondary} />
             </TouchableOpacity>
 
             <Modal
@@ -479,20 +481,20 @@ const ReportsScreen: React.FC = () => {
                 activeOpacity={1}
                 onPress={() => setShowWeeksDropdown(false)}
               >
-                <View style={styles.dropdownMenu}>
+                <View style={[styles.dropdownMenu, { backgroundColor: designColors.surfaceVariant, ...(isDark ? {} : { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 5 }) }]}>
                   {[2, 4, 8, 12].map((weeks) => (
                     <TouchableOpacity
                       key={weeks}
                       style={[
                         styles.dropdownMenuItem,
-                        selectedWeeks === weeks && styles.dropdownMenuItemSelected,
+                        { backgroundColor: selectedWeeks === weeks ? (isDark ? designColors.primaryRed + '30' : designColors.primaryRed + '15') : 'transparent' },
                       ]}
                       onPress={() => {
                         setSelectedWeeks(weeks);
                         setShowWeeksDropdown(false);
                       }}
                     >
-                      <Text style={styles.dropdownMenuItemText}>{weeks} weeks</Text>
+                      <Text style={[styles.dropdownMenuItemText, { color: designColors.textPrimary }]}>{weeks} weeks</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -507,15 +509,15 @@ const ReportsScreen: React.FC = () => {
   // Render Export Buttons
   const renderExportButtons = () => (
     <View style={styles.exportButtonsRow}>
-      <TouchableOpacity style={[styles.exportButton, { backgroundColor: designColors.primaryRed }]} onPress={handleExportPDF}>
+      <TouchableOpacity style={[styles.exportButton, { backgroundColor: staticDesignColors.primaryRed }]} onPress={handleExportPDF}>
         <Icon name="picture-as-pdf" size={16} color="#FFFFFF" />
         <Text style={styles.exportButtonText}>PDF</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={[styles.exportButton, { backgroundColor: designColors.successGreen }]} onPress={handleExportExcel}>
+      <TouchableOpacity style={[styles.exportButton, { backgroundColor: staticDesignColors.successGreen }]} onPress={handleExportExcel}>
         <Icon name="table-chart" size={16} color="#FFFFFF" />
         <Text style={styles.exportButtonText}>Excel</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={[styles.exportButton, { backgroundColor: designColors.blueAccent }]} onPress={handleExportCSV}>
+      <TouchableOpacity style={[styles.exportButton, { backgroundColor: staticDesignColors.blueAccent }]} onPress={handleExportCSV}>
         <Icon name="description" size={16} color="#FFFFFF" />
         <Text style={styles.exportButtonText}>CSV</Text>
       </TouchableOpacity>
@@ -527,7 +529,7 @@ const ReportsScreen: React.FC = () => {
     if (isLoadingStock && !stockLoaded) {
       return (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={designColors.primaryRed} />
+          <ActivityIndicator size="large" color={staticDesignColors.primaryRed} />
         </View>
       );
     }
@@ -535,7 +537,7 @@ const ReportsScreen: React.FC = () => {
     if (stockReport.length === 0) {
       return (
         <View style={styles.emptyContainer}>
-          <Icon name="inventory" size={48} color={designColors.textSecondary} />
+          <Icon name="inventory" size={48} color={staticDesignColors.textSecondary} />
           <Text style={styles.emptyText}>No stock data found</Text>
         </View>
       );
@@ -544,9 +546,9 @@ const ReportsScreen: React.FC = () => {
     return (
       <View>
         {stockReport.map((item, index) => (
-          <View key={item.id || index} style={styles.reportCard}>
+          <View key={item.id || index} style={[styles.reportCard, { backgroundColor: designColors.cardBackground, ...(isDark ? {} : { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }) }]}>
             <View style={styles.cardHeaderRow}>
-              <Text style={styles.cardTitle} numberOfLines={1}>{item.name}</Text>
+              <Text style={[styles.cardTitle, { color: designColors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
               <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
                 <Text style={styles.statusBadgeText}>
                   {(item.status || 'normal').charAt(0).toUpperCase() + (item.status || 'normal').slice(1)}
@@ -558,14 +560,14 @@ const ReportsScreen: React.FC = () => {
             
             <View style={styles.cardDetailsRow}>
               <View>
-                <Text style={styles.cardDetailLabel}>Category</Text>
-                <Text style={styles.cardDetailValue}>
+                <Text style={[styles.cardDetailLabel, { color: designColors.textSecondary }]}>Category</Text>
+                <Text style={[styles.cardDetailValue, { color: designColors.textPrimary }]}>
                   {(item.category || '').replace('_', ' ').charAt(0).toUpperCase() + (item.category || '').replace('_', ' ').slice(1)}
                 </Text>
               </View>
               <View style={{ alignItems: 'flex-end' }}>
-                <Text style={styles.cardDetailLabel}>Current Stock</Text>
-                <Text style={[styles.cardDetailValue, { fontWeight: 'bold' }]}>{item.current_quantity}</Text>
+                <Text style={[styles.cardDetailLabel, { color: designColors.textSecondary }]}>Current Stock</Text>
+                <Text style={[styles.cardDetailValue, { fontWeight: 'bold', color: designColors.textPrimary }]}>{item.current_quantity}</Text>
               </View>
             </View>
           </View>
@@ -579,7 +581,7 @@ const ReportsScreen: React.FC = () => {
     if (isLoadingMovements && !movementsLoaded) {
       return (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={designColors.primaryRed} />
+          <ActivityIndicator size="large" color={staticDesignColors.primaryRed} />
         </View>
       );
     }
@@ -587,7 +589,7 @@ const ReportsScreen: React.FC = () => {
     if (filteredMovements.length === 0) {
       return (
         <View style={styles.emptyContainer}>
-          <Icon name="swap-vert" size={48} color={designColors.textSecondary} />
+          <Icon name="swap-vert" size={48} color={staticDesignColors.textSecondary} />
           <Text style={styles.emptyText}>No movement data for {formatMonth(selectedMonth)}</Text>
         </View>
       );
@@ -597,21 +599,21 @@ const ReportsScreen: React.FC = () => {
       <View>
         {/* Summary Badges */}
         <View style={styles.summaryRow}>
-          <View style={[styles.summaryBadge, { backgroundColor: designColors.successGreen }]}>
+          <View style={[styles.summaryBadge, { backgroundColor: staticDesignColors.successGreen }]}>
             <Text style={styles.summaryBadgeText}>Total In: {totalStockIn}</Text>
           </View>
-          <View style={[styles.summaryBadge, { backgroundColor: designColors.dangerRed }]}>
+          <View style={[styles.summaryBadge, { backgroundColor: staticDesignColors.dangerRed }]}>
             <Text style={styles.summaryBadgeText}>Total Out: {totalStockOut}</Text>
           </View>
         </View>
 
         {filteredMovements.map((movement, index) => (
-          <View key={movement.id || index} style={styles.reportCard}>
+          <View key={movement.id || index} style={[styles.reportCard, { backgroundColor: designColors.cardBackground, ...(isDark ? {} : { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }) }]}>
             <View style={styles.cardHeaderRow}>
-              <Text style={styles.cardTitle} numberOfLines={1}>{movement.item_name}</Text>
+              <Text style={[styles.cardTitle, { color: designColors.textPrimary }]} numberOfLines={1}>{movement.item_name}</Text>
               <View style={[
                 styles.statusBadge, 
-                { backgroundColor: movement.movement_type === 'in' ? designColors.successGreen : designColors.dangerRed }
+                { backgroundColor: movement.movement_type === 'in' ? staticDesignColors.successGreen : staticDesignColors.dangerRed }
               ]}>
                 <Text style={styles.statusBadgeText}>
                   {movement.movement_type === 'in' ? 'Stock In' : 'Stock Out'}
@@ -623,12 +625,12 @@ const ReportsScreen: React.FC = () => {
             
             <View style={styles.cardDetailsRow}>
               <View>
-                <Text style={styles.cardDetailLabel}>Date</Text>
-                <Text style={styles.cardDetailValue}>{formatDate(movement.created_at)}</Text>
+                <Text style={[styles.cardDetailLabel, { color: designColors.textSecondary }]}>Date</Text>
+                <Text style={[styles.cardDetailValue, { color: designColors.textPrimary }]}>{formatDate(movement.created_at)}</Text>
               </View>
               <View style={{ alignItems: 'flex-end' }}>
-                <Text style={styles.cardDetailLabel}>Quantity</Text>
-                <Text style={[styles.cardDetailValue, { fontWeight: 'bold' }]}>{movement.quantity}</Text>
+                <Text style={[styles.cardDetailLabel, { color: designColors.textSecondary }]}>Quantity</Text>
+                <Text style={[styles.cardDetailValue, { fontWeight: 'bold', color: designColors.textPrimary }]}>{movement.quantity}</Text>
               </View>
             </View>
           </View>
@@ -642,7 +644,7 @@ const ReportsScreen: React.FC = () => {
     if (isLoadingSoftDrinks) {
       return (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={designColors.primaryRed} />
+          <ActivityIndicator size="large" color={staticDesignColors.primaryRed} />
         </View>
       );
     }
@@ -650,7 +652,7 @@ const ReportsScreen: React.FC = () => {
     if (!softDrinksReport || !softDrinksReport.data || softDrinksReport.data.length === 0) {
       return (
         <View style={styles.emptyContainer}>
-          <Icon name="local-drink" size={48} color={designColors.textSecondary} />
+          <Icon name="local-drink" size={48} color={staticDesignColors.textSecondary} />
           <Text style={styles.emptyText}>No soft drinks data available</Text>
         </View>
       );
@@ -660,26 +662,26 @@ const ReportsScreen: React.FC = () => {
       <View>
         {/* Summary Card */}
         {softDrinksReport.summary && (
-          <View style={[styles.reportCard, { backgroundColor: designColors.primaryRed + '20' }]}>
-            <Text style={[styles.cardTitle, { marginBottom: 8 }]}>Summary ({selectedWeeks} weeks)</Text>
+          <View style={[styles.reportCard, { backgroundColor: staticDesignColors.primaryRed + '20' }]}>
+            <Text style={[styles.cardTitle, { marginBottom: 8, color: designColors.textPrimary }]}>Summary ({selectedWeeks} weeks)</Text>
             <View style={styles.summaryGrid}>
               <View style={styles.summaryGridItem}>
-                <Text style={styles.cardDetailLabel}>Total In</Text>
-                <Text style={[styles.summaryGridValue, { color: designColors.successGreen }]}>
+                <Text style={[styles.cardDetailLabel, { color: designColors.textSecondary }]}>Total In</Text>
+                <Text style={[styles.summaryGridValue, { color: staticDesignColors.successGreen }]}>
                   {softDrinksReport.summary.total_stock_in}
                 </Text>
               </View>
               <View style={styles.summaryGridItem}>
-                <Text style={styles.cardDetailLabel}>Total Out</Text>
-                <Text style={[styles.summaryGridValue, { color: designColors.dangerRed }]}>
+                <Text style={[styles.cardDetailLabel, { color: designColors.textSecondary }]}>Total Out</Text>
+                <Text style={[styles.summaryGridValue, { color: staticDesignColors.dangerRed }]}>
                   {softDrinksReport.summary.total_stock_out}
                 </Text>
               </View>
               <View style={styles.summaryGridItem}>
-                <Text style={styles.cardDetailLabel}>Net Change</Text>
+                <Text style={[styles.cardDetailLabel, { color: designColors.textSecondary }]}>Net Change</Text>
                 <Text style={[
                   styles.summaryGridValue, 
-                  { color: softDrinksReport.summary.total_net_change >= 0 ? designColors.successGreen : designColors.dangerRed }
+                  { color: softDrinksReport.summary.total_net_change >= 0 ? staticDesignColors.successGreen : staticDesignColors.dangerRed }
                 ]}>
                   {softDrinksReport.summary.total_net_change}
                 </Text>
@@ -690,21 +692,21 @@ const ReportsScreen: React.FC = () => {
 
         {/* Weekly Data */}
         {softDrinksReport.data.map((week, index) => (
-          <View key={index} style={styles.reportCard}>
-            <Text style={styles.cardTitle}>Week {index + 1}</Text>
-            <Text style={styles.weekDateRange}>
+          <View key={index} style={[styles.reportCard, { backgroundColor: designColors.cardBackground, ...(isDark ? {} : { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }) }]}>
+            <Text style={[styles.cardTitle, { color: designColors.textPrimary }]}>Week {index + 1}</Text>
+            <Text style={[styles.weekDateRange, { color: designColors.textSecondary }]}>
               {week.week_start?.substring(0, 10)} to {week.week_end?.substring(0, 10)}
             </Text>
 
             <View style={styles.weekSummaryRow}>
-              <Text style={[styles.weekSummaryText, { color: designColors.successGreen }]}>
+              <Text style={[styles.weekSummaryText, { color: staticDesignColors.successGreen }]}>
                 In: {week.total_stock_in}
               </Text>
-              <Text style={[styles.weekSummaryText, { color: designColors.dangerRed }]}>
+              <Text style={[styles.weekSummaryText, { color: staticDesignColors.dangerRed }]}>
                 Out: {week.total_stock_out}
               </Text>
-              <Text style={styles.weekSummaryText}>Net: {week.total_net_change}</Text>
-              <Text style={[styles.weekSummaryText, { fontWeight: 'bold' }]}>
+              <Text style={[styles.weekSummaryText, { color: designColors.textSecondary }]}>Net: {week.total_net_change}</Text>
+              <Text style={[styles.weekSummaryText, { fontWeight: 'bold', color: designColors.textPrimary }]}>
                 Trend: {(week.overall_trend || '').toUpperCase()}
               </Text>
             </View>
@@ -714,14 +716,14 @@ const ReportsScreen: React.FC = () => {
                 <View style={styles.cardDivider} />
                 {week.items.map((item, itemIndex) => (
                   <View key={itemIndex} style={styles.weekItemRow}>
-                    <Text style={styles.weekItemName} numberOfLines={1}>{item.item_name}</Text>
-                    <Text style={[styles.weekItemStat, { color: designColors.successGreen }]}>
+                    <Text style={[styles.weekItemName, { color: designColors.textPrimary }]} numberOfLines={1}>{item.item_name}</Text>
+                    <Text style={[styles.weekItemStat, { color: staticDesignColors.successGreen }]}>
                       In: {item.stock_in}
                     </Text>
-                    <Text style={[styles.weekItemStat, { color: designColors.dangerRed }]}>
+                    <Text style={[styles.weekItemStat, { color: staticDesignColors.dangerRed }]}>
                       Out: {item.stock_out}
                     </Text>
-                    <Text style={[styles.weekItemTrend, { fontWeight: 'bold' }]}>
+                    <Text style={[styles.weekItemTrend, { fontWeight: 'bold', color: designColors.textPrimary }]}>
                       {(item.trend || '').toUpperCase()}
                     </Text>
                   </View>
@@ -756,7 +758,7 @@ const ReportsScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: designColors.background }]}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -765,7 +767,7 @@ const ReportsScreen: React.FC = () => {
         }
       >
         {/* Header */}
-        <Text style={styles.headerTitle}>Reports</Text>
+        <Text style={[styles.headerTitle, { color: designColors.textPrimary }]}>Reports</Text>
 
         {/* Report Type Dropdown */}
         {renderReportTypeDropdown()}
@@ -774,8 +776,8 @@ const ReportsScreen: React.FC = () => {
         {renderFiltersSection()}
 
         {/* Report Content Card */}
-        <View style={styles.reportContentCard}>
-          <Text style={styles.reportContentTitle}>{getReportTitle()}</Text>
+        <View style={[styles.reportContentCard, { backgroundColor: designColors.cardBackground }]}>
+          <Text style={[styles.reportContentTitle, { color: designColors.textPrimary }]}>{getReportTitle()}</Text>
           
           {/* Export Buttons */}
           {renderExportButtons()}
@@ -793,7 +795,7 @@ const ReportsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: designColors.backgroundDark,
+    backgroundColor: staticDesignColors.backgroundDark,
   },
   scrollView: {
     flex: 1,
@@ -804,7 +806,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 16,
@@ -818,18 +820,18 @@ const styles = StyleSheet.create({
   dropdownButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: designColors.surfaceDark,
+    backgroundColor: staticDesignColors.surfaceDark,
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderWidth: 1,
-    borderColor: designColors.borderLight,
+    borderColor: staticDesignColors.borderLight,
     gap: 8,
   },
   dropdownButtonText: {
     flex: 1,
     fontSize: 14,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   modalOverlay: {
     flex: 1,
@@ -839,7 +841,7 @@ const styles = StyleSheet.create({
     padding: 32,
   },
   dropdownMenu: {
-    backgroundColor: designColors.surfaceDark,
+    backgroundColor: staticDesignColors.surfaceDark,
     borderRadius: 8,
     width: '100%',
     maxWidth: 350,
@@ -853,42 +855,42 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   dropdownMenuItemSelected: {
-    backgroundColor: designColors.primaryRed + '30',
+    backgroundColor: staticDesignColors.primaryRed + '30',
   },
   dropdownMenuItemText: {
     fontSize: 14,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
 
   // Filters
   filtersCard: {
     marginHorizontal: 16,
     marginBottom: 12,
-    backgroundColor: designColors.surfaceDark,
+    backgroundColor: staticDesignColors.surfaceDark,
     borderRadius: 8,
     padding: 12,
   },
   filterLabel: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     marginBottom: 8,
   },
   filterButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: designColors.cardDark,
+    backgroundColor: staticDesignColors.cardDark,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: designColors.borderLight,
+    borderColor: staticDesignColors.borderLight,
     gap: 8,
   },
   filterButtonText: {
     flex: 1,
     fontSize: 14,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
 
   // Export Buttons
@@ -914,14 +916,14 @@ const styles = StyleSheet.create({
   // Report Content Card
   reportContentCard: {
     marginHorizontal: 16,
-    backgroundColor: designColors.surfaceDark,
+    backgroundColor: staticDesignColors.surfaceDark,
     borderRadius: 12,
     padding: 16,
   },
   reportContentTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     marginBottom: 12,
   },
   reportContentBody: {
@@ -944,13 +946,13 @@ const styles = StyleSheet.create({
   emptyText: {
     marginTop: 16,
     fontSize: 16,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
     textAlign: 'center',
   },
 
   // Report Cards
   reportCard: {
-    backgroundColor: designColors.cardDark,
+    backgroundColor: staticDesignColors.cardDark,
     borderRadius: 8,
     padding: 16,
     marginBottom: 12,
@@ -964,7 +966,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     flex: 1,
     marginRight: 8,
   },
@@ -980,7 +982,7 @@ const styles = StyleSheet.create({
   },
   cardDivider: {
     height: 1,
-    backgroundColor: designColors.borderLight,
+    backgroundColor: staticDesignColors.borderLight,
     marginVertical: 8,
   },
   cardDetailsRow: {
@@ -989,12 +991,12 @@ const styles = StyleSheet.create({
   },
   cardDetailLabel: {
     fontSize: 11,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
     marginBottom: 2,
   },
   cardDetailValue: {
     fontSize: 14,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
 
   // Summary
@@ -1024,14 +1026,14 @@ const styles = StyleSheet.create({
   summaryGridValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     marginTop: 4,
   },
 
   // Week Data
   weekDateRange: {
     fontSize: 12,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
     marginBottom: 8,
   },
   weekSummaryRow: {
@@ -1042,7 +1044,7 @@ const styles = StyleSheet.create({
   },
   weekSummaryText: {
     fontSize: 12,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
   },
   weekItemRow: {
     flexDirection: 'row',
@@ -1052,7 +1054,7 @@ const styles = StyleSheet.create({
   weekItemName: {
     flex: 2,
     fontSize: 12,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   weekItemStat: {
     flex: 1,
@@ -1062,7 +1064,7 @@ const styles = StyleSheet.create({
   weekItemTrend: {
     width: 50,
     fontSize: 10,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     textAlign: 'right',
   },
 });

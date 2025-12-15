@@ -37,8 +37,8 @@ type NavigationProp = DrawerNavigationProp<DrawerParamList>;
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// Design colors matching Kotlin app
-const designColors = {
+// Static design colors for StyleSheet (dynamic colors applied inline)
+const staticDesignColors = {
   backgroundDark: '#121212',
   surfaceDark: '#1E1E1E',
   cardDark: '#252525',
@@ -58,7 +58,7 @@ const showToast = (type: 'success' | 'error' | 'info', text1: string, text2?: st
 };
 
 const StockInScreen = () => {
-  const { colors } = useTheme();
+  const { colors, designColors, isDark } = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const { profile } = useAuthStore();
 
@@ -358,7 +358,9 @@ const StockInScreen = () => {
     <TouchableOpacity
       style={[
         styles.summaryCard,
-        filterType === filterKey && filterKey !== 'all' && { borderColor: color, borderWidth: 2 }
+        { backgroundColor: designColors.cardBackground },
+        filterType === filterKey && filterKey !== 'all' && { borderColor: color, borderWidth: 2 },
+        !isDark && { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6, elevation: 4 }
       ]}
       onPress={() => setFilterType(filterType === filterKey ? 'all' : filterKey)}
     >
@@ -366,7 +368,7 @@ const StockInScreen = () => {
         <Icon name={iconName} size={20} color={color} />
         <Text style={[styles.summaryCardValue, { color }]}>{value}</Text>
       </View>
-      <Text style={styles.summaryCardTitle}>{title}</Text>
+      <Text style={[styles.summaryCardTitle, { color: designColors.textSecondary }]}>{title}</Text>
     </TouchableOpacity>
   );
 
@@ -386,7 +388,7 @@ const StockInScreen = () => {
         : 'schedule';
 
     return (
-      <View key={receipt.id} style={styles.receiptCard}>
+      <View key={receipt.id} style={[styles.receiptCard, { backgroundColor: designColors.cardBackground, borderColor: designColors.borderLight }, !isDark && { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }]}>
         {/* Header */}
         <TouchableOpacity
           style={styles.receiptHeader}
@@ -395,8 +397,8 @@ const StockInScreen = () => {
           <View style={styles.receiptHeaderLeft}>
             <Icon name={statusIcon} size={20} color={statusColor} />
             <View style={styles.receiptHeaderInfo}>
-              <Text style={styles.receiptSupplier}>{getSupplierName(receipt)}</Text>
-              <Text style={styles.receiptSubmittedBy}>
+              <Text style={[styles.receiptSupplier, { color: designColors.textPrimary }]}>{getSupplierName(receipt)}</Text>
+              <Text style={[styles.receiptSubmittedBy, { color: designColors.textSecondary }]}>
                 Submitted by {getSubmittedByName(receipt)}
               </Text>
             </View>
@@ -420,16 +422,16 @@ const StockInScreen = () => {
           <View style={styles.receiptContent}>
             {/* Receipt File */}
             <View style={styles.receiptSection}>
-              <Text style={styles.receiptSectionLabel}>Receipt File</Text>
+              <Text style={[styles.receiptSectionLabel, { color: designColors.textPrimary }]}>Receipt File</Text>
               <View style={styles.receiptFileRow}>
                 <Icon name="description" size={16} color={designColors.textSecondary} />
-                <Text style={styles.receiptFileName} numberOfLines={1}>
+                <Text style={[styles.receiptFileName, { color: designColors.textSecondary }]} numberOfLines={1}>
                   {getReceiptFileName(receipt)}
                 </Text>
               </View>
               <View style={styles.receiptActions}>
                 <TouchableOpacity
-                  style={styles.receiptActionButton}
+                  style={[styles.receiptActionButton, { backgroundColor: designColors.surfaceVariant }]}
                   onPress={() => {
                     setViewDialogZoom(100);
                     viewDialogScale.setValue(1);
@@ -444,7 +446,7 @@ const StockInScreen = () => {
                   <Icon name="visibility" size={20} color={designColors.textPrimary} />
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={styles.receiptActionButton}
+                  style={[styles.receiptActionButton, { backgroundColor: designColors.surfaceVariant }]}
                   onPress={() => {
                     const url = getReceiptImageUrl(receipt);
                     Linking.openURL(url);
@@ -532,7 +534,7 @@ const StockInScreen = () => {
     const hasPackaging = item.items?.enable_packaging && (item.items?.units_per_package || 0) > 0;
     
     return (
-      <View key={item.id} style={styles.stockItemCard}>
+      <View key={item.id} style={[styles.stockItemCard, { backgroundColor: designColors.cardBackground, ...(isDark ? {} : { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }) }]}>
         <View style={styles.stockItemRow}>
           {/* Image */}
           {item.items?.image_url ? (
@@ -545,20 +547,20 @@ const StockInScreen = () => {
           
           {/* Details */}
           <View style={styles.stockItemDetails}>
-            <Text style={styles.stockItemName} numberOfLines={1}>
+            <Text style={[styles.stockItemName, { color: designColors.textPrimary }]} numberOfLines={1}>
               {item.items?.name || 'Unknown Item'}
             </Text>
-            <Text style={styles.stockItemCategory}>
+            <Text style={[styles.stockItemCategory, { color: designColors.textSecondary }]}>
               {item.items?.category || 'Uncategorized'}
             </Text>
           </View>
           
           {/* Quantity and Status */}
           <View style={styles.stockItemRight}>
-            <Text style={styles.stockItemQty}>
+            <Text style={[styles.stockItemQty, { color: designColors.textPrimary }]}>
               Qty: {item.current_quantity} {item.items?.base_unit || 'piece'}{item.current_quantity !== 1 ? 's' : ''}
             </Text>
-            <Text style={styles.stockItemThreshold}>
+            <Text style={[styles.stockItemThreshold, { color: designColors.textSecondary }]}>
               Threshold: {item.items?.threshold_level || 0} {item.items?.base_unit || 'piece'}{(item.items?.threshold_level || 0) !== 1 ? 's' : ''}
             </Text>
             <View style={[styles.stockStatusBadge, { backgroundColor: status.color + '33' }]}>
@@ -573,17 +575,19 @@ const StockInScreen = () => {
             {/* Unit Selection */}
             {hasPackaging && (
               <View style={styles.unitSelectionRow}>
-                <Text style={styles.unitLabel}>Unit:</Text>
+                <Text style={[styles.unitLabel, { color: designColors.textPrimary }]}>Unit:</Text>
                 <View style={styles.unitChips}>
                   <TouchableOpacity
                     style={[
                       styles.unitChip,
+                      { borderColor: designColors.borderLight },
                       quickUnitType === 'base' && styles.unitChipSelected
                     ]}
                     onPress={() => setQuickUnitType('base')}
                   >
                     <Text style={[
                       styles.unitChipText,
+                      { color: quickUnitType === 'base' ? '#FFFFFF' : designColors.textSecondary },
                       quickUnitType === 'base' && styles.unitChipTextSelected
                     ]}>
                       {item.items?.base_unit || 'piece'}
@@ -592,12 +596,14 @@ const StockInScreen = () => {
                   <TouchableOpacity
                     style={[
                       styles.unitChip,
+                      { borderColor: designColors.borderLight },
                       quickUnitType === 'packaging' && styles.unitChipSelected
                     ]}
                     onPress={() => setQuickUnitType('packaging')}
                   >
                     <Text style={[
                       styles.unitChipText,
+                      { color: quickUnitType === 'packaging' ? '#FFFFFF' : designColors.textSecondary },
                       quickUnitType === 'packaging' && styles.unitChipTextSelected
                     ]}>
                       {item.items?.packaging_unit || 'carton'}
@@ -610,7 +616,7 @@ const StockInScreen = () => {
             {/* Quantity and Actions */}
             <View style={styles.quickActionRow}>
               <TextInput
-                style={styles.quickQuantityInput}
+                style={[styles.quickQuantityInput, { backgroundColor: designColors.surfaceVariant, color: designColors.textPrimary }]}
                 placeholder="Qty"
                 placeholderTextColor={designColors.textSecondary}
                 value={quickQuantity}
@@ -660,9 +666,9 @@ const StockInScreen = () => {
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={[styles.loadingContainer, { backgroundColor: designColors.background }]}>
         <ActivityIndicator size="large" color={designColors.primaryRed} />
-        <Text style={styles.loadingText}>Loading inventory...</Text>
+        <Text style={[styles.loadingText, { color: designColors.textSecondary }]}>Loading inventory...</Text>
       </View>
     );
   }
@@ -672,21 +678,21 @@ const StockInScreen = () => {
     return (
       <View style={styles.container}>
         {/* Top Section: Document Viewer (50% of screen) */}
-        <View style={styles.documentViewerContainer}>
+        <View style={[styles.documentViewerContainer, { backgroundColor: designColors.surfaceVariant }]}>
           {/* Document Header */}
-          <View style={styles.documentHeader}>
+          <View style={[styles.documentHeader, { borderBottomColor: designColors.borderLight }]}>
             <View style={styles.documentHeaderLeft}>
               <TouchableOpacity 
                 onPress={() => setFullScreenReceipt(null)}
-                style={styles.documentCloseButton}
+                style={[styles.documentCloseButton, { backgroundColor: designColors.cardBackground }]}
               >
                 <Icon name="close" size={24} color={designColors.textPrimary} />
               </TouchableOpacity>
               <View style={styles.documentHeaderInfo}>
-                <Text style={styles.documentSupplierName} numberOfLines={1}>
+                <Text style={[styles.documentSupplierName, { color: designColors.textPrimary }]} numberOfLines={1}>
                   {getSupplierName(fullScreenReceipt)}
                 </Text>
-                <Text style={styles.documentFileName} numberOfLines={1}>
+                <Text style={[styles.documentFileName, { color: designColors.textSecondary }]} numberOfLines={1}>
                   {getReceiptFileName(fullScreenReceipt)}
                 </Text>
               </View>
@@ -701,11 +707,11 @@ const StockInScreen = () => {
                   documentScale.setValue(newZoom / 100);
                   documentBaseScale.current = newZoom / 100;
                 }}
-                style={styles.zoomButton}
+                style={[styles.zoomButton, { backgroundColor: designColors.cardBackground, borderColor: designColors.borderLight }]}
               >
                 <Icon name="remove" size={20} color={designColors.textPrimary} />
               </TouchableOpacity>
-              <Text style={styles.zoomText}>{documentZoom}%</Text>
+              <Text style={[styles.zoomText, { color: designColors.textPrimary }]}>{documentZoom}%</Text>
               <TouchableOpacity
                 onPress={() => {
                   const newZoom = Math.min(1000, documentZoom + 50);
@@ -713,7 +719,7 @@ const StockInScreen = () => {
                   documentScale.setValue(newZoom / 100);
                   documentBaseScale.current = newZoom / 100;
                 }}
-                style={styles.zoomButton}
+                style={[styles.zoomButton, { backgroundColor: designColors.cardBackground, borderColor: designColors.borderLight }]}
               >
                 <Icon name="add" size={20} color={designColors.textPrimary} />
               </TouchableOpacity>
@@ -778,10 +784,10 @@ const StockInScreen = () => {
         <View style={[styles.documentDivider, { backgroundColor: designColors.primaryRed, height: 2 }]} />
         
         {/* Bottom Section: Stock List (50% of screen) */}
-        <View style={styles.bottomStockContainer}>
+        <View style={[styles.bottomStockContainer, { backgroundColor: designColors.background }]}>
           {/* Current Stock Levels Header */}
           <View style={styles.stockLevelsHeader}>
-            <Text style={styles.stockLevelsTitle}>Current Stock Levels</Text>
+            <Text style={[styles.stockLevelsTitle, { color: designColors.textPrimary }]}>Current Stock Levels</Text>
             {!showGeneralSearch && (
               <TouchableOpacity onPress={() => setShowGeneralSearch(true)}>
                 <Icon name="search" size={24} color={designColors.textPrimary} />
@@ -791,10 +797,10 @@ const StockInScreen = () => {
           
           {/* General Search */}
           {showGeneralSearch && (
-            <View style={styles.searchInputContainer}>
+            <View style={[styles.searchInputContainer, { backgroundColor: designColors.surfaceVariant, borderColor: designColors.borderLight }]}>
               <Icon name="search" size={20} color={designColors.textSecondary} />
               <TextInput
-                style={styles.searchInput}
+                style={[styles.searchInput, { color: designColors.textPrimary }]}
                 placeholder="Search for items by name or category..."
                 placeholderTextColor={designColors.textSecondary}
                 value={generalSearchTerm}
@@ -814,7 +820,7 @@ const StockInScreen = () => {
             {Object.entries(groupedItems).map(([category, items]) => (
               <View key={category} style={styles.categorySection}>
                 <View style={styles.categoryHeader}>
-                  <Text style={styles.categoryTitle}>{category}</Text>
+                  <Text style={[styles.categoryTitle, { color: designColors.textPrimary }]}>{category}</Text>
                   {!showCategorySearch[category] && (
                     <TouchableOpacity
                       onPress={() => setShowCategorySearch({ ...showCategorySearch, [category]: true })}
@@ -825,10 +831,10 @@ const StockInScreen = () => {
                 </View>
                 
                 {showCategorySearch[category] && (
-                  <View style={styles.categorySearchContainer}>
+                  <View style={[styles.categorySearchContainer, { backgroundColor: designColors.surfaceVariant, borderColor: designColors.borderLight }]}>
                     <Icon name="search" size={18} color={designColors.textSecondary} />
                     <TextInput
-                      style={styles.categorySearchInput}
+                      style={[styles.categorySearchInput, { color: designColors.textPrimary }]}
                       placeholder={`Search in ${category}...`}
                       placeholderTextColor={designColors.textSecondary}
                       value={categorySearchTerms[category] || ''}
@@ -853,7 +859,7 @@ const StockInScreen = () => {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: designColors.background }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         refreshControl={
@@ -866,7 +872,7 @@ const StockInScreen = () => {
         }
       >
         {/* Header */}
-        <Text style={styles.headerTitle}>Stock In</Text>
+        <Text style={[styles.headerTitle, { color: designColors.textPrimary }]}>Stock In</Text>
         
         {/* Summary Cards */}
         <View style={styles.summaryRow}>
@@ -876,13 +882,13 @@ const StockInScreen = () => {
         </View>
         
         {/* Item Receipts Section */}
-        <View style={styles.receiptsSection}>
+        <View style={[styles.receiptsSection, { backgroundColor: designColors.cardBackground }, !isDark && { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6, elevation: 4 }]}>
           <TouchableOpacity
             style={styles.receiptsSectionHeader}
             onPress={toggleReceipts}
             disabled={isLoadingReceipts}
           >
-            <Text style={styles.receiptsSectionTitle}>Item Receipts</Text>
+            <Text style={[styles.receiptsSectionTitle, { color: designColors.textPrimary }]}>Item Receipts</Text>
             {isLoadingReceipts ? (
               <ActivityIndicator size="small" color={designColors.textPrimary} />
             ) : (
@@ -926,10 +932,10 @@ const StockInScreen = () => {
         
         {/* General Search */}
         {showGeneralSearch && (
-          <View style={styles.searchInputContainer}>
+          <View style={[styles.searchInputContainer, { backgroundColor: designColors.surfaceVariant, borderColor: designColors.borderLight }]}>
             <Icon name="search" size={20} color={designColors.textSecondary} />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { color: designColors.textPrimary }]}
               placeholder="Search for items by name or category..."
               placeholderTextColor={designColors.textSecondary}
               value={generalSearchTerm}
@@ -961,10 +967,10 @@ const StockInScreen = () => {
             
             {/* Category Search */}
             {showCategorySearch[category] && (
-              <View style={styles.categorySearchContainer}>
+              <View style={[styles.categorySearchContainer, { backgroundColor: designColors.surfaceVariant, borderColor: designColors.borderLight }]}>
                 <Icon name="search" size={18} color={designColors.textSecondary} />
                 <TextInput
-                  style={styles.categorySearchInput}
+                  style={[styles.categorySearchInput, { color: designColors.textPrimary }]}
                   placeholder={`Search in ${category}...`}
                   placeholderTextColor={designColors.textSecondary}
                   value={categorySearchTerms[category] || ''}
@@ -1030,7 +1036,7 @@ const StockInScreen = () => {
                   viewDialogScale.setValue(newZoom / 100);
                   viewDialogBaseScale.current = newZoom / 100;
                 }}
-                style={styles.viewDialogZoomButton}
+                style={[styles.viewDialogZoomButton, { backgroundColor: designColors.cardBackground, borderColor: designColors.borderLight }]}
               >
                 <Icon name="zoom-out" size={24} color={designColors.textPrimary} />
               </TouchableOpacity>
@@ -1042,7 +1048,7 @@ const StockInScreen = () => {
                   viewDialogScale.setValue(newZoom / 100);
                   viewDialogBaseScale.current = newZoom / 100;
                 }}
-                style={styles.viewDialogZoomButton}
+                style={[styles.viewDialogZoomButton, { backgroundColor: designColors.cardBackground, borderColor: designColors.borderLight }]}
               >
                 <Icon name="zoom-in" size={24} color={designColors.textPrimary} />
               </TouchableOpacity>
@@ -1113,18 +1119,18 @@ const StockInScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: designColors.backgroundDark,
+    backgroundColor: staticDesignColors.backgroundDark,
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: designColors.backgroundDark,
+    backgroundColor: staticDesignColors.backgroundDark,
     justifyContent: 'center',
     alignItems: 'center',
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
   },
   scrollContent: {
     paddingBottom: 100,
@@ -1132,7 +1138,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 12,
@@ -1147,7 +1153,7 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     flex: 1,
-    backgroundColor: designColors.surfaceDark,
+    backgroundColor: staticDesignColors.surfaceDark,
     borderRadius: 12,
     padding: 12,
   },
@@ -1162,13 +1168,13 @@ const styles = StyleSheet.create({
   },
   summaryCardTitle: {
     fontSize: 12,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
     marginTop: 4,
   },
   
   // Receipts Section
   receiptsSection: {
-    backgroundColor: designColors.surfaceDark,
+    backgroundColor: staticDesignColors.surfaceDark,
     marginHorizontal: 16,
     borderRadius: 12,
     marginBottom: 12,
@@ -1183,31 +1189,30 @@ const styles = StyleSheet.create({
   receiptsSectionTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
   },
   receiptsContent: {
     paddingHorizontal: 12,
     paddingBottom: 12,
   },
   noReceiptsText: {
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
     fontSize: 14,
     paddingVertical: 12,
   },
   moreReceiptsText: {
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
     fontSize: 12,
     marginTop: 8,
   },
   
   // Receipt Card
   receiptCard: {
-    backgroundColor: designColors.cardDark,
+    backgroundColor: staticDesignColors.cardDark,
     borderRadius: 8,
     marginBottom: 8,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: designColors.borderLight,
+    borderColor: staticDesignColors.borderLight,
   },
   receiptHeader: {
     flexDirection: 'row',
@@ -1227,11 +1232,11 @@ const styles = StyleSheet.create({
   receiptSupplier: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   receiptSubmittedBy: {
     fontSize: 12,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
   },
   receiptHeaderRight: {
     flexDirection: 'row',
@@ -1250,7 +1255,7 @@ const styles = StyleSheet.create({
   },
   receiptContent: {
     borderTopWidth: 1,
-    borderTopColor: designColors.borderLight,
+    borderTopColor: staticDesignColors.borderLight,
     padding: 12,
   },
   receiptSection: {
@@ -1259,7 +1264,7 @@ const styles = StyleSheet.create({
   receiptSectionLabel: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     marginBottom: 4,
   },
   receiptFileRow: {
@@ -1269,7 +1274,7 @@ const styles = StyleSheet.create({
   },
   receiptFileName: {
     fontSize: 12,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
     flex: 1,
   },
   receiptActions: {
@@ -1280,14 +1285,14 @@ const styles = StyleSheet.create({
   receiptActionButton: {
     flex: 1,
     height: 40,
-    backgroundColor: designColors.surfaceDark,
+    backgroundColor: staticDesignColors.surfaceDark,
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
   },
   receiptRemarks: {
     fontSize: 12,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
   },
   receiptButtonRow: {
     flexDirection: 'row',
@@ -1319,14 +1324,13 @@ const styles = StyleSheet.create({
   stockLevelsTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
   },
   
   // Search
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: designColors.surfaceDark,
+    backgroundColor: staticDesignColors.surfaceDark,
     marginHorizontal: 16,
     marginBottom: 12,
     paddingHorizontal: 12,
@@ -1334,12 +1338,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     gap: 8,
     borderWidth: 1,
-    borderColor: designColors.borderLight,
+    borderColor: staticDesignColors.borderLight,
   },
   searchInput: {
     flex: 1,
     fontSize: 14,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   
   // Category Section
@@ -1356,29 +1360,28 @@ const styles = StyleSheet.create({
   categoryTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
   },
   categorySearchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: designColors.surfaceDark,
+    backgroundColor: staticDesignColors.surfaceDark,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
     gap: 8,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: designColors.borderLight,
+    borderColor: staticDesignColors.borderLight,
   },
   categorySearchInput: {
     flex: 1,
     fontSize: 14,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   
   // Stock Item Card
   stockItemCard: {
-    backgroundColor: designColors.cardDark,
+    backgroundColor: staticDesignColors.cardDark,
     borderRadius: 12,
     padding: 16,
     marginBottom: 8,
@@ -1396,7 +1399,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 4,
-    backgroundColor: designColors.surfaceDark,
+    backgroundColor: staticDesignColors.surfaceDark,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1407,11 +1410,9 @@ const styles = StyleSheet.create({
   stockItemName: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
   },
   stockItemCategory: {
     fontSize: 12,
-    color: designColors.textSecondary,
     marginTop: 2,
   },
   stockItemRight: {
@@ -1420,11 +1421,9 @@ const styles = StyleSheet.create({
   stockItemQty: {
     fontSize: 14,
     fontWeight: '600',
-    color: designColors.textPrimary,
   },
   stockItemThreshold: {
     fontSize: 12,
-    color: designColors.textSecondary,
     marginTop: 2,
   },
   stockStatusBadge: {
@@ -1443,7 +1442,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: designColors.borderLight,
+    borderTopColor: staticDesignColors.borderLight,
   },
   unitSelectionRow: {
     flexDirection: 'row',
@@ -1454,7 +1453,6 @@ const styles = StyleSheet.create({
   unitLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: designColors.textPrimary,
   },
   unitChips: {
     flexDirection: 'row',
@@ -1465,15 +1463,14 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: designColors.borderLight,
+    borderColor: staticDesignColors.borderLight,
   },
   unitChipSelected: {
-    backgroundColor: designColors.primaryRed,
-    borderColor: designColors.primaryRed,
+    backgroundColor: staticDesignColors.primaryRed,
+    borderColor: staticDesignColors.primaryRed,
   },
   unitChipText: {
     fontSize: 12,
-    color: designColors.textSecondary,
   },
   unitChipTextSelected: {
     color: '#FFFFFF',
@@ -1485,17 +1482,17 @@ const styles = StyleSheet.create({
   },
   quickQuantityInput: {
     flex: 1,
-    backgroundColor: designColors.surfaceDark,
+    backgroundColor: staticDesignColors.surfaceDark,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 12,
     fontSize: 14,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     borderWidth: 1,
-    borderColor: designColors.borderLight,
+    borderColor: staticDesignColors.borderLight,
   },
   quickAddButton: {
-    backgroundColor: designColors.successGreen,
+    backgroundColor: staticDesignColors.successGreen,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 8,
@@ -1538,7 +1535,7 @@ const styles = StyleSheet.create({
   emptyText: {
     marginTop: 16,
     fontSize: 16,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
   },
   
   // View Receipt Modal
@@ -1552,7 +1549,7 @@ const styles = StyleSheet.create({
   viewReceiptModal: {
     width: '95%',
     height: '90%',
-    backgroundColor: designColors.surfaceDark,
+    backgroundColor: staticDesignColors.surfaceDark,
     borderRadius: 16,
     overflow: 'hidden',
   },
@@ -1562,7 +1559,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: designColors.borderLight,
+    borderBottomColor: staticDesignColors.borderLight,
   },
   viewReceiptHeaderInfo: {
     flex: 1,
@@ -1570,11 +1567,11 @@ const styles = StyleSheet.create({
   viewReceiptSupplier: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   viewReceiptFileName: {
     fontSize: 12,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
     marginTop: 2,
   },
   viewReceiptImageContainer: {
@@ -1590,7 +1587,7 @@ const styles = StyleSheet.create({
   viewDialogModal: {
     width: '95%',
     height: '90%',
-    backgroundColor: designColors.surfaceDark,
+    backgroundColor: staticDesignColors.surfaceDark,
     borderRadius: 16,
     overflow: 'hidden',
   },
@@ -1606,16 +1603,16 @@ const styles = StyleSheet.create({
   viewDialogSupplier: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   viewDialogFileName: {
     fontSize: 12,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
     marginTop: 2,
   },
   viewDialogDivider: {
     height: 1,
-    backgroundColor: designColors.borderLight,
+    backgroundColor: staticDesignColors.borderLight,
   },
   viewDialogZoomRow: {
     flexDirection: 'row',
@@ -1628,16 +1625,16 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: designColors.cardDark,
+    backgroundColor: staticDesignColors.cardDark,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: designColors.borderLight,
+    borderColor: staticDesignColors.borderLight,
   },
   viewDialogZoomText: {
     fontSize: 16,
     fontWeight: '600',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     minWidth: 60,
     textAlign: 'center',
   },
@@ -1658,11 +1655,11 @@ const styles = StyleSheet.create({
   // Full Screen Document Viewer
   fullScreenContainer: {
     flex: 1,
-    backgroundColor: designColors.backgroundDark,
+    backgroundColor: staticDesignColors.backgroundDark,
   },
   documentViewerContainer: {
     flex: 1,
-    backgroundColor: designColors.surfaceDark,
+    backgroundColor: staticDesignColors.surfaceDark,
   },
   documentHeader: {
     flexDirection: 'row',
@@ -1670,7 +1667,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: designColors.borderLight,
+    borderBottomColor: staticDesignColors.borderLight,
   },
   documentHeaderLeft: {
     flexDirection: 'row',
@@ -1682,7 +1679,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: designColors.cardDark,
+    backgroundColor: staticDesignColors.cardDark,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1692,11 +1689,11 @@ const styles = StyleSheet.create({
   documentSupplierName: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   documentFileName: {
     fontSize: 11,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
   },
   zoomControls: {
     flexDirection: 'row',
@@ -1707,22 +1704,22 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: designColors.cardDark,
+    backgroundColor: staticDesignColors.cardDark,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: designColors.borderLight,
+    borderColor: staticDesignColors.borderLight,
   },
   zoomText: {
     fontSize: 12,
     fontWeight: '600',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     minWidth: 45,
     textAlign: 'center',
   },
   documentDivider: {
     height: 1,
-    backgroundColor: designColors.borderLight,
+    backgroundColor: staticDesignColors.borderLight,
   },
   documentImageScroll: {
     flex: 1,
@@ -1739,7 +1736,8 @@ const styles = StyleSheet.create({
   },
   bottomStockContainer: {
     flex: 1,
-    backgroundColor: designColors.backgroundDark,
+    backgroundColor: staticDesignColors.backgroundDark,
+    paddingTop: 16,
   },
   bottomStockScroll: {
     flex: 1,

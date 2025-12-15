@@ -43,6 +43,10 @@ const ICADeliveryModal: React.FC<ICADeliveryModalProps> = ({
         notes,
         status: 'pending',
         delivery_date: new Date().toISOString(),
+        date: new Date().toISOString(),
+        type: 'temperature_check',
+        time_of_day: 'lunch',
+        quantity: 0,
       });
       onSuccess();
       onClose();

@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { useRef } from 'react';
 
 import apiClient from '../../api/ApiClient';
 import AddEventModal from '../../components/dashboard/AddEventModal';
@@ -17,24 +18,21 @@ import GenerateMoveoutModal from '../../components/dashboard/GenerateMoveoutModa
 import MoveoutItemsModal from '../../components/dashboard/MoveoutItemsModal';
 import { CalendarEvent, MoveoutList, WeatherData } from '../../models';
 import { useAuthStore } from '../../stores/authStore';
-
-// Design System Colors - Matching Android app exactly
-const colors = {
-  primaryRed: '#E6002A',
-  backgroundDark: '#121212',
-  surfaceDark: '#1E1E1E',
-  cardBackground: '#1A1A1A',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#B3B3B3',
-  textMuted: '#808080',
-  warningOrange: '#FFA726',
-  errorRed: '#E53935',
-  deepOrange: '#FF7043',
-  infoBlue: '#2196F3',
-};
+import { getDesignColors, useTheme } from '../../theme/ThemeContext';
+import { Colors, DesignColors } from '../../theme/colors';
 
 const { width } = Dimensions.get('window');
 
+// Format time helper (Swedish time, with seconds)
+const formatSwedishTime = (date: Date) => {
+  return date.toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+    timeZone: 'Europe/Stockholm',
+  });
+};
 // Format date helper
 const formatDate = (date: Date) => {
   const options: Intl.DateTimeFormatOptions = { month: 'short', day: '2-digit', year: 'numeric' };
@@ -49,6 +47,7 @@ const StatCard = ({
   icon,
   iconColor,
   onPress,
+  themeColors,
 }: {
   title: string;
   value: number | string;
@@ -56,23 +55,36 @@ const StatCard = ({
   icon: string;
   iconColor: string;
   onPress?: () => void;
+  themeColors: DesignColors;
 }) => (
   <TouchableOpacity 
-    style={styles.statsCard} 
+    style={[
+      styles.statsCard, 
+      { 
+        backgroundColor: themeColors.cardBackground,
+        shadowColor: themeColors.shadowColor,
+        shadowOpacity: themeColors.shadowOpacity,
+        shadowRadius: themeColors.shadowRadius,
+        shadowOffset: themeColors.shadowOffset,
+        elevation: themeColors.elevation,
+        borderWidth: themeColors.elevation === 0 ? 0 : 1,
+        borderColor: themeColors.border,
+      }
+    ]} 
     onPress={onPress}
     activeOpacity={onPress ? 0.7 : 1}
   >
     <View style={styles.statsCardHeader}>
-      <Text style={styles.statsCardTitle}>{title}</Text>
+      <Text style={[styles.statsCardTitle, { color: themeColors.textSecondary }]}>{title}</Text>
       <Icon name={icon} size={16} color={iconColor} />
     </View>
     <Text style={[styles.statsCardValue, { color: iconColor }]}>{value}</Text>
-    <Text style={styles.statsCardSubtitle}>{subtitle}</Text>
+    <Text style={[styles.statsCardSubtitle, { color: themeColors.textMuted }]}>{subtitle}</Text>
   </TouchableOpacity>
 );
 
 // Weather Widget Component - Matching Android exactly
-const WeatherWidget = ({ weather, isLoading }: { weather: WeatherData | null; isLoading?: boolean }) => {
+const WeatherWidget = ({ weather, isLoading, themeColors }: { weather: WeatherData | null; isLoading?: boolean; themeColors: DesignColors }) => {
   // Always show weather widget with default or actual data
   const displayWeather = weather || {
     temperature: 15,
@@ -83,29 +95,41 @@ const WeatherWidget = ({ weather, isLoading }: { weather: WeatherData | null; is
   };
 
   return (
-    <View style={styles.weatherCard}>
+    <View style={[
+      styles.weatherCard, 
+      { 
+        backgroundColor: themeColors.cardBackground,
+        shadowColor: themeColors.shadowColor,
+        shadowOpacity: themeColors.shadowOpacity,
+        shadowRadius: themeColors.shadowRadius,
+        shadowOffset: themeColors.shadowOffset,
+        elevation: themeColors.elevation,
+        borderWidth: themeColors.elevation === 0 ? 0 : 1,
+        borderColor: themeColors.border,
+      }
+    ]}>
       <View style={styles.weatherHeader}>
-        <Icon name="cloud" size={20} color={colors.textSecondary} />
-        <Text style={styles.weatherLocation}>Weather in {displayWeather.location}</Text>
+        <Icon name="cloud" size={20} color={themeColors.textSecondary} />
+        <Text style={[styles.weatherLocation, { color: themeColors.textSecondary }]}>Weather in {displayWeather.location}</Text>
       </View>
       
       <View style={styles.weatherMain}>
-        <Text style={styles.weatherTemp}>{Math.round(displayWeather.temperature)}°C</Text>
-        <Text style={styles.weatherCondition}>{displayWeather.condition}</Text>
+        <Text style={[styles.weatherTemp, { color: themeColors.textPrimary }]}>{Math.round(displayWeather.temperature)}°C</Text>
+        <Text style={[styles.weatherCondition, { color: themeColors.textSecondary }]}>{displayWeather.condition}</Text>
       </View>
       
       <View style={styles.weatherDetails}>
         <View style={styles.weatherDetailItem}>
-          <Icon name="water" size={16} color={colors.infoBlue} />
-          <Text style={styles.weatherDetailText}>{String(displayWeather.humidity || 95)}%</Text>
+          <Icon name="water" size={16} color={themeColors.infoBlue} />
+          <Text style={[styles.weatherDetailText, { color: themeColors.textPrimary }]}>{String(displayWeather.humidity || 95)}%</Text>
         </View>
         <View style={styles.weatherDetailItem}>
-          <Icon name="air" size={16} color={colors.textSecondary} />
-          <Text style={styles.weatherDetailText}>{String(displayWeather.windSpeed || 9.0)} km/h</Text>
+          <Icon name="air" size={16} color={themeColors.textSecondary} />
+          <Text style={[styles.weatherDetailText, { color: themeColors.textPrimary }]}>{String(displayWeather.windSpeed || 9.0)} km/h</Text>
         </View>
       </View>
       
-      <Text style={styles.weatherMessage}>Good conditions for deliveries</Text>
+      <Text style={[styles.weatherMessage, { color: themeColors.textMuted }]}>Good conditions for deliveries</Text>
     </View>
   );
 };
@@ -114,9 +138,11 @@ const WeatherWidget = ({ weather, isLoading }: { weather: WeatherData | null; is
 const MoveoutListItem = ({
   list,
   onPress,
+  themeColors,
 }: {
   list: MoveoutList;
   onPress: () => void;
+  themeColors: DesignColors;
 }) => {
   const formatListDate = (dateStr?: string) => {
     if (!dateStr) return 'N/A';
@@ -132,11 +158,21 @@ const MoveoutListItem = ({
   const isPending = status.toLowerCase() === 'pending' || status.toLowerCase() === 'draft' || status.toLowerCase() === 'active';
 
   return (
-    <TouchableOpacity style={styles.moveoutItem} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity 
+      style={[
+        styles.moveoutItem, 
+        { 
+          backgroundColor: themeColors.cardBackground, 
+          borderColor: themeColors.border,
+        }
+      ]} 
+      onPress={onPress} 
+      activeOpacity={0.7}
+    >
       <View style={styles.moveoutItemContent}>
-        <Text style={styles.moveoutItemTitle}>{list.title || 'Moveout List'}</Text>
-        <Text style={styles.moveoutItemDate}>{formatListDate(list.created_at)}</Text>
-        <Text style={styles.moveoutItemCount}>{itemCount} items</Text>
+        <Text style={[styles.moveoutItemTitle, { color: themeColors.textPrimary }]}>{list.title || 'Moveout List'}</Text>
+        <Text style={[styles.moveoutItemDate, { color: themeColors.textSecondary }]}>{formatListDate(list.created_at)}</Text>
+        <Text style={[styles.moveoutItemCount, { color: themeColors.textMuted }]}>{itemCount} items</Text>
       </View>
       <View style={[styles.statusBadge, isPending ? styles.statusPending : styles.statusCompleted]}>
         <Text style={styles.statusText}>{isPending ? 'Pending' : 'Completed'}</Text>
@@ -151,11 +187,13 @@ const CalendarSection = ({
   selectedDate,
   onAddEvent,
   showAddButton,
+  themeColors,
 }: {
   events: CalendarEvent[];
   selectedDate: Date;
   onAddEvent: () => void;
   showAddButton: boolean;
+  themeColors: DesignColors;
 }) => {
   const [displayedMonth, setDisplayedMonth] = useState(new Date());
   
@@ -193,36 +231,48 @@ const CalendarSection = ({
   };
 
   return (
-    <View style={styles.calendarCard}>
+    <View style={[
+      styles.calendarCard, 
+      { 
+        backgroundColor: themeColors.cardBackground,
+        shadowColor: themeColors.shadowColor,
+        shadowOpacity: themeColors.shadowOpacity,
+        shadowRadius: themeColors.shadowRadius,
+        shadowOffset: themeColors.shadowOffset,
+        elevation: themeColors.elevation,
+        borderWidth: themeColors.elevation === 0 ? 0 : 1,
+        borderColor: themeColors.border,
+      }
+    ]}>
       {/* Header */}
       <View style={styles.calendarHeader}>
         <View>
-          <Text style={styles.calendarTitle}>Calendar & Events</Text>
-          <Text style={styles.calendarSubtitle}>Upcoming events and reminders</Text>
+          <Text style={[styles.calendarTitle, { color: themeColors.textPrimary }]}>Calendar & Events</Text>
+          <Text style={[styles.calendarSubtitle, { color: themeColors.textSecondary }]}>Upcoming events and reminders</Text>
         </View>
         {showAddButton && (
-          <TouchableOpacity style={styles.addEventButton} onPress={onAddEvent}>
-            <Icon name="add" size={16} color={colors.textPrimary} />
+          <TouchableOpacity style={[styles.addEventButton, { backgroundColor: themeColors.primaryRed }]} onPress={onAddEvent}>
+            <Icon name="add" size={16} color="#FFFFFF" />
             <Text style={styles.addEventText}>Add Event</Text>
           </TouchableOpacity>
         )}
       </View>
       
       {/* Month Navigation */}
-      <View style={styles.monthNav}>
+      <View style={[styles.monthNav, { backgroundColor: themeColors.surface, borderColor: themeColors.border, borderWidth: 1 }]}>
         <TouchableOpacity onPress={goToPrevMonth} style={styles.navButton}>
-          <Icon name="chevron-left" size={24} color={colors.textPrimary} />
+          <Icon name="chevron-left" size={24} color={themeColors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.monthText}>{monthNames[month]} {year}</Text>
+        <Text style={[styles.monthText, { color: themeColors.textPrimary }]}>{monthNames[month]} {year}</Text>
         <TouchableOpacity onPress={goToNextMonth} style={styles.navButton}>
-          <Icon name="chevron-right" size={24} color={colors.textPrimary} />
+          <Icon name="chevron-right" size={24} color={themeColors.textPrimary} />
         </TouchableOpacity>
       </View>
       
       {/* Day Names */}
       <View style={styles.dayNamesRow}>
         {dayNames.map((day) => (
-          <Text key={day} style={styles.dayName}>{day}</Text>
+          <Text key={day} style={[styles.dayName, { color: themeColors.textSecondary }]}>{day}</Text>
         ))}
       </View>
       
@@ -233,10 +283,11 @@ const CalendarSection = ({
             {day !== null && (
               <View style={[
                 styles.dayCellContent,
-                isCurrentMonth && day === todayDay && styles.todayCell
+                isCurrentMonth && day === todayDay && { backgroundColor: themeColors.primaryRed }
               ]}>
                 <Text style={[
                   styles.dayText,
+                  { color: themeColors.textPrimary },
                   isCurrentMonth && day === todayDay && styles.todayText
                 ]}>
                   {day}
@@ -248,13 +299,13 @@ const CalendarSection = ({
       </View>
       
       {/* Upcoming Events */}
-      <View style={styles.upcomingEvents}>
-        <Text style={styles.upcomingTitle}>Upcoming Events</Text>
+      <View style={[styles.upcomingEvents, { borderTopColor: themeColors.border }]}>
+        <Text style={[styles.upcomingTitle, { color: themeColors.textPrimary }]}>Upcoming Events</Text>
         {events.length === 0 ? (
-          <Text style={styles.noEventsText}>No upcoming events</Text>
+          <Text style={[styles.noEventsText, { color: themeColors.textSecondary }]}>No upcoming events</Text>
         ) : (
           events.slice(0, 5).map((event) => (
-            <Text key={event.id} style={styles.eventItem}>• {event.title}</Text>
+            <Text key={event.id} style={[styles.eventItem, { color: themeColors.textPrimary }]}>• {event.title}</Text>
           ))
         )}
       </View>
@@ -265,6 +316,7 @@ const CalendarSection = ({
 // Main Dashboard Screen
 const DashboardScreen = ({ navigation }: any) => {
   const { profile } = useAuthStore();
+  const { colors, isDark, designColors } = useTheme();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -291,7 +343,20 @@ const DashboardScreen = ({ navigation }: any) => {
   const showGenerateButton = isManager; // Only managers can generate
 
   const userName = profile?.name || 'User';
+
+  const [swedishTime, setSwedishTime] = useState(formatSwedishTime(new Date()));
+  const timeIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const todayDate = formatDate(new Date());
+
+  useEffect(() => {
+    // Update time every second
+    timeIntervalRef.current = setInterval(() => {
+      setSwedishTime(formatSwedishTime(new Date()));
+    }, 1000);
+    return () => {
+      if (timeIntervalRef.current) clearInterval(timeIntervalRef.current);
+    };
+  }, []);
 
   const loadDashboardData = useCallback(async (silent = false) => {
     if (!silent) setIsLoading(true);
@@ -377,15 +442,15 @@ const DashboardScreen = ({ navigation }: any) => {
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primaryRed} />
-        <Text style={styles.loadingText}>Loading dashboard...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading dashboard...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -393,28 +458,30 @@ const DashboardScreen = ({ navigation }: any) => {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            tintColor={colors.primaryRed}
-            colors={[colors.primaryRed]}
+            tintColor={Colors.primary}
+            colors={[Colors.primary]}
           />
         }
       >
         {/* Dashboard Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Text style={styles.headerTitle}>Dashboard</Text>
-            <Text style={styles.headerSubtitle}>
+            <Text style={[styles.headerTitle, { color: designColors.textPrimary }]}>Dashboard</Text>
+            <Text style={[styles.headerSubtitle, { color: designColors.textSecondary }]}>
               Welcome back, {userName}! Here's what's happening with your inventory.
             </Text>
             <View style={styles.dateRow}>
-              <Icon name="today" size={16} color={colors.textSecondary} />
-              <Text style={styles.dateText}>Today: {todayDate}</Text>
+              <Icon name="today" size={16} color={designColors.textSecondary} />
+              <Text style={[styles.dateText, { color: designColors.textSecondary }]}>Today: {todayDate}</Text>
+              <Icon name="access-time" size={16} color={designColors.textSecondary} style={{ marginLeft: 12 }} />
+              <Text style={[styles.dateText, { color: designColors.textSecondary, marginLeft: 4 }]}>{swedishTime}</Text>
             </View>
           </View>
-          <TouchableOpacity onPress={handleRefresh} style={styles.refreshButton}>
+          <TouchableOpacity onPress={handleRefresh} style={[styles.refreshButton, { backgroundColor: designColors.surface, borderRadius: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: isDark ? 0 : 0.1, shadowRadius: 4, elevation: isDark ? 0 : 2 }]}>
             {isRefreshing ? (
-              <ActivityIndicator size="small" color={colors.textPrimary} />
+              <ActivityIndicator size="small" color={designColors.textPrimary} />
             ) : (
-              <Icon name="refresh" size={24} color={colors.textPrimary} />
+              <Icon name="refresh" size={24} color={designColors.textPrimary} />
             )}
           </TouchableOpacity>
         </View>
@@ -428,14 +495,16 @@ const DashboardScreen = ({ navigation }: any) => {
                 value={stats.totalItems}
                 subtitle="Items in inventory"
                 icon="inventory"
-                iconColor={colors.primaryRed}
+                iconColor={"#E6002A"}
+                themeColors={designColors}
               />
               <StatCard
                 title="Below Threshold"
                 value={stats.thresholdStockItems}
                 subtitle="Below threshold"
                 icon="warning"
-                iconColor={colors.warningOrange}
+                iconColor={designColors.warningOrange}
+                themeColors={designColors}
               />
             </View>
             <View style={styles.statsRow}>
@@ -444,43 +513,57 @@ const DashboardScreen = ({ navigation }: any) => {
                 value={stats.lowStockItems}
                 subtitle="Need restocking"
                 icon="trending-down"
-                iconColor={colors.deepOrange}
+                iconColor={designColors.deepOrange}
+                themeColors={designColors}
               />
               <StatCard
                 title="Critical Stock"
                 value={stats.criticalStockItems}
                 subtitle="Urgent action"
                 icon="priority-high"
-                iconColor={colors.errorRed}
+                iconColor={designColors.errorRed}
+                themeColors={designColors}
               />
             </View>
           </View>
         )}
 
         {/* Weather Widget */}
-        <WeatherWidget weather={weather} />
+        <WeatherWidget weather={weather} themeColors={designColors} />
 
         {/* Generated Moveout Lists Section */}
-        <View style={styles.moveoutSection}>
+        <View style={[
+          styles.moveoutSection,
+          {
+            backgroundColor: designColors.cardBackground,
+            shadowColor: designColors.shadowColor,
+            shadowOpacity: designColors.shadowOpacity,
+            shadowRadius: designColors.shadowRadius,
+            shadowOffset: designColors.shadowOffset,
+            elevation: designColors.elevation,
+            borderWidth: designColors.elevation === 0 ? 0 : 1,
+            borderColor: designColors.border,
+          }
+        ]}>
           <View style={styles.moveoutHeader}>
             <View>
-              <Text style={styles.moveoutTitle}>Generated Moveout Lists</Text>
-              <Text style={styles.moveoutSubtitle}>
+              <Text style={[styles.moveoutTitle, { color: designColors.textPrimary }]}>Generated Moveout Lists</Text>
+              <Text style={[styles.moveoutSubtitle, { color: designColors.textSecondary }]}>
                 {showHistory ? 'Generated and completed moveout lists' : 'Generated moveout lists'}
               </Text>
             </View>
             <View style={styles.moveoutActions}>
               {showGenerateButton && (
                 <TouchableOpacity 
-                  style={styles.generateButton}
+                  style={[styles.generateButton, { backgroundColor: designColors.primaryRed }]}
                   onPress={() => setShowGenerateModal(true)}
                 >
-                  <Icon name="add" size={16} color={colors.textPrimary} />
+                  <Icon name="add" size={16} color="#FFFFFF" />
                   <Text style={styles.generateButtonText}>Generate</Text>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity onPress={toggleHistory} style={styles.historyButton}>
-                <Icon name="history" size={24} color={colors.textPrimary} />
+              <TouchableOpacity onPress={toggleHistory} style={[styles.historyButton, { backgroundColor: designColors.surface, borderWidth: 1, borderColor: designColors.border }]}>
+                <Icon name="history" size={24} color={designColors.textPrimary} />
               </TouchableOpacity>
             </View>
           </View>
@@ -488,9 +571,9 @@ const DashboardScreen = ({ navigation }: any) => {
           {/* Moveout Lists */}
           {moveoutLists.length === 0 ? (
             <View style={styles.emptyMoveout}>
-              <Icon name="assignment" size={48} color={colors.textMuted} />
-              <Text style={styles.emptyMoveoutText}>No active moveout lists generated yet</Text>
-              <Text style={styles.emptyMoveoutHint}>Click "Generate" to create your first list</Text>
+              <Icon name="assignment" size={48} color={designColors.textMuted} />
+              <Text style={[styles.emptyMoveoutText, { color: designColors.textSecondary }]}>No active moveout lists generated yet</Text>
+              <Text style={[styles.emptyMoveoutHint, { color: designColors.textMuted }]}>Click "Generate" to create your first list</Text>
             </View>
           ) : (
             moveoutLists.map((list) => (
@@ -501,6 +584,7 @@ const DashboardScreen = ({ navigation }: any) => {
                   setSelectedMoveoutList(list);
                   setShowMoveoutItemsModal(true);
                 }}
+                themeColors={designColors}
               />
             ))
           )}
@@ -513,6 +597,7 @@ const DashboardScreen = ({ navigation }: any) => {
             selectedDate={new Date()}
             onAddEvent={() => setShowAddEventModal(true)}
             showAddButton={isManager}
+            themeColors={designColors}
           />
         )}
 
@@ -559,16 +644,16 @@ const DashboardScreen = ({ navigation }: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.backgroundDark,
+    backgroundColor: "#121212",
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: colors.backgroundDark,
+    backgroundColor: "#121212",
     justifyContent: 'center',
     alignItems: 'center',
   },
   loadingText: {
-    color: colors.textSecondary,
+    color: "#B3B3B3",
     marginTop: 16,
     fontSize: 14,
   },
@@ -590,12 +675,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: colors.textPrimary,
+    color: "#FFFFFF",
     marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: colors.textSecondary,
+    color: "#B3B3B3",
     marginBottom: 8,
     lineHeight: 20,
   },
@@ -605,7 +690,7 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: 13,
-    color: colors.textSecondary,
+    color: "#B3B3B3",
     marginLeft: 4,
   },
   refreshButton: {
@@ -622,7 +707,7 @@ const styles = StyleSheet.create({
   },
   statsCard: {
     width: (width - 44) / 2,
-    backgroundColor: colors.cardBackground,
+    backgroundColor: "#1A1A1A",
     borderRadius: 12,
     padding: 16,
   },
@@ -634,7 +719,7 @@ const styles = StyleSheet.create({
   },
   statsCardTitle: {
     fontSize: 12,
-    color: colors.textSecondary,
+    color: "#B3B3B3",
     flex: 1,
   },
   statsCardValue: {
@@ -644,11 +729,11 @@ const styles = StyleSheet.create({
   },
   statsCardSubtitle: {
     fontSize: 12,
-    color: colors.textSecondary,
+    color: "#B3B3B3",
   },
   // Weather Card
   weatherCard: {
-    backgroundColor: colors.cardBackground,
+    backgroundColor: "#1A1A1A",
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -661,7 +746,7 @@ const styles = StyleSheet.create({
   weatherLocation: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.textPrimary,
+    color: "#FFFFFF",
     marginLeft: 8,
   },
   weatherMain: {
@@ -671,11 +756,11 @@ const styles = StyleSheet.create({
   weatherTemp: {
     fontSize: 48,
     fontWeight: 'bold',
-    color: colors.textPrimary,
+    color: "#FFFFFF",
   },
   weatherCondition: {
     fontSize: 14,
-    color: colors.textSecondary,
+    color: "#B3B3B3",
   },
   weatherDetails: {
     flexDirection: 'row',
@@ -687,17 +772,17 @@ const styles = StyleSheet.create({
   },
   weatherDetailText: {
     fontSize: 13,
-    color: colors.textPrimary,
+    color: "#FFFFFF",
     marginTop: 4,
   },
   weatherMessage: {
     fontSize: 13,
-    color: colors.textSecondary,
+    color: "#B3B3B3",
     textAlign: 'center',
   },
   // Moveout Section
   moveoutSection: {
-    backgroundColor: colors.cardBackground,
+    backgroundColor: "#1A1A1A",
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -711,12 +796,12 @@ const styles = StyleSheet.create({
   moveoutTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: colors.textPrimary,
+    color: "#FFFFFF",
     marginBottom: 4,
   },
   moveoutSubtitle: {
     fontSize: 12,
-    color: colors.textSecondary,
+    color: "#B3B3B3",
   },
   moveoutActions: {
     flexDirection: 'row',
@@ -725,7 +810,7 @@ const styles = StyleSheet.create({
   generateButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.primaryRed,
+    backgroundColor: "#E6002A",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
@@ -733,7 +818,7 @@ const styles = StyleSheet.create({
   },
   generateButtonText: {
     fontSize: 12,
-    color: colors.textPrimary,
+    color: "#FFFFFF",
     marginLeft: 4,
     fontWeight: '500',
   },
@@ -746,7 +831,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: colors.surfaceDark,
+    borderBottomColor: "#1E1E1E",
   },
   moveoutItemContent: {
     flex: 1,
@@ -754,17 +839,17 @@ const styles = StyleSheet.create({
   moveoutItemTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.textPrimary,
+    color: "#FFFFFF",
     marginBottom: 2,
   },
   moveoutItemDate: {
     fontSize: 12,
-    color: colors.textSecondary,
+    color: "#B3B3B3",
     marginBottom: 2,
   },
   moveoutItemCount: {
     fontSize: 12,
-    color: colors.textMuted,
+    color: "#808080",
   },
   statusBadge: {
     paddingHorizontal: 12,
@@ -772,14 +857,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   statusPending: {
-    backgroundColor: colors.primaryRed,
+    backgroundColor: "#E6002A",
   },
   statusCompleted: {
     backgroundColor: '#00C851',
   },
   statusText: {
     fontSize: 11,
-    color: colors.textPrimary,
+    color: "#FFFFFF",
     fontWeight: '500',
   },
   emptyMoveout: {
@@ -788,17 +873,17 @@ const styles = StyleSheet.create({
   },
   emptyMoveoutText: {
     fontSize: 14,
-    color: colors.textSecondary,
+    color: "#B3B3B3",
     marginTop: 12,
   },
   emptyMoveoutHint: {
     fontSize: 12,
-    color: colors.textMuted,
+    color: "#808080",
     marginTop: 4,
   },
   // Calendar Section
   calendarCard: {
-    backgroundColor: colors.cardBackground,
+    backgroundColor: "#1A1A1A",
     borderRadius: 12,
     padding: 16,
   },
@@ -811,24 +896,24 @@ const styles = StyleSheet.create({
   calendarTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: colors.textPrimary,
+    color: "#FFFFFF",
     marginBottom: 4,
   },
   calendarSubtitle: {
     fontSize: 12,
-    color: colors.textSecondary,
+    color: "#B3B3B3",
   },
   addEventButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.primaryRed,
+    backgroundColor: "#E6002A",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
   },
   addEventText: {
     fontSize: 12,
-    color: colors.textPrimary,
+    color: "#FFFFFF",
     marginLeft: 4,
     fontWeight: '500',
   },
@@ -847,7 +932,7 @@ const styles = StyleSheet.create({
   monthText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: colors.textPrimary,
+    color: "#FFFFFF",
   },
   dayNamesRow: {
     flexDirection: 'row',
@@ -858,7 +943,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 12,
     fontWeight: '600',
-    color: colors.textSecondary,
+    color: "#B3B3B3",
   },
   calendarGrid: {
     flexDirection: 'row',
@@ -878,35 +963,35 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   todayCell: {
-    backgroundColor: colors.primaryRed,
+    backgroundColor: "#E6002A",
   },
   dayText: {
     fontSize: 14,
-    color: colors.textPrimary,
+    color: "#FFFFFF",
   },
   todayText: {
     fontWeight: 'bold',
-    color: colors.textPrimary,
+    color: "#FFFFFF",
   },
   upcomingEvents: {
     marginTop: 20,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: colors.surfaceDark,
+    borderTopColor: "#1E1E1E",
   },
   upcomingTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.textPrimary,
+    color: "#FFFFFF",
     marginBottom: 12,
   },
   noEventsText: {
     fontSize: 13,
-    color: colors.textSecondary,
+    color: "#B3B3B3",
   },
   eventItem: {
     fontSize: 13,
-    color: colors.textPrimary,
+    color: "#FFFFFF",
     marginBottom: 4,
   },
 });

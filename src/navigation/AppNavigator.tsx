@@ -2,7 +2,8 @@ import { createDrawerNavigator } from '@react-navigation/drawer';
 import { NavigationContainer, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
 import apiClient from '../api/ApiClient';
 import { UserRole } from '../models';
@@ -110,11 +111,24 @@ const DrawerNavigator = () => {
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
+  const [showNotificationDetail, setShowNotificationDetail] = useState(false);
+  const [notificationDetail, setNotificationDetail] = useState<{title: string; message: string; type: string} | null>(null);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   
   // Initialize message store socket listeners once
   useEffect(() => {
     initMessageStoreSocketListeners();
+  }, []);
+
+  // Register badge decrement callback for fast updates from NotificationsScreen
+  useEffect(() => {
+    apiClient.setBadgeDecrementCallback(() => {
+      setNotificationCount(prev => Math.max(0, prev - 1));
+      debugLog('[AppNavigator] 🔔 Badge decremented');
+    });
+    return () => {
+      apiClient.setBadgeDecrementCallback(null);
+    };
   }, []);
   
   // Set current user ID in message store
@@ -196,7 +210,7 @@ const DrawerNavigator = () => {
     };
   }, [fetchUnreadCount, profile?.id, currentChatUserId]);
 
-  // Set up notification tap handler to navigate to chat
+  // Set up notification tap handler to navigate to chat or show popup
   useEffect(() => {
     localNotificationService.setNotificationTapListener((data) => {
       debugLog('[AppNavigator] 📱 Notification tapped:', data);
@@ -207,6 +221,15 @@ const DrawerNavigator = () => {
           userId: data.userId,
           userName: data.userName || 'User',
         });
+      } else if (data.type && data.message) {
+        // Show popup for other notification types
+        let title = 'Notification';
+        if (data.type === 'stock_alert') title = '⚠️ Low Stock Alert';
+        else if (data.type === 'event') title = '📅 Upcoming Event';
+        else title = 'Stock Nexus';
+        
+        setNotificationDetail({ title, message: data.message, type: data.type });
+        setShowNotificationDetail(true);
       }
     });
 
@@ -230,6 +253,37 @@ const DrawerNavigator = () => {
         }}
         onNotificationCountChange={setNotificationCount}
       />
+      <Modal
+        visible={showNotificationDetail}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowNotificationDetail(false)}
+      >
+        <View style={notificationModalStyles.overlay}>
+          <View style={[notificationModalStyles.container, { backgroundColor: colors.cardBackground }]}>
+            <View style={notificationModalStyles.header}>
+              <Text style={[notificationModalStyles.title, { color: colors.text }]}>
+                {notificationDetail?.title}
+              </Text>
+              <TouchableOpacity 
+                onPress={() => setShowNotificationDetail(false)}
+                style={notificationModalStyles.closeButton}
+              >
+                <Icon name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+            <Text style={[notificationModalStyles.message, { color: colors.textSecondary }]}>
+              {notificationDetail?.message}
+            </Text>
+            <TouchableOpacity 
+              style={[notificationModalStyles.button, { backgroundColor: Colors.primary }]}
+              onPress={() => setShowNotificationDetail(false)}
+            >
+              <Text style={notificationModalStyles.buttonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
       <Drawer.Navigator
         drawerContent={(props) => <CustomDrawer {...props} />}
         screenOptions={({ navigation: navProp }) => ({
@@ -251,12 +305,20 @@ const DrawerNavigator = () => {
               unreadMessagesCount={displayUnreadCount}
             />
           ),
+          drawerType: 'front',
           drawerActiveBackgroundColor: Colors.primary + '20',
           drawerActiveTintColor: Colors.primary,
           drawerInactiveTintColor: colors.text,
           drawerStyle: {
+            backgroundColor: 'transparent',
+          },
+          drawerContentStyle: {
+            backgroundColor: 'transparent',
+          },
+          sceneContainerStyle: {
             backgroundColor: colors.background,
           },
+          overlayColor: 'rgba(0, 0, 0, 0.15)',
         })}
       >
       <Drawer.Screen 
@@ -442,6 +504,57 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+});
+
+const notificationModalStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  container: {
+    width: '90%',
+    maxWidth: 400,
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '700',
+    flex: 1,
+  },
+  closeButton: {
+    padding: 4,
+  },
+  message: {
+    fontSize: 16,
+    lineHeight: 24,
+    marginBottom: 24,
+  },
+  button: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

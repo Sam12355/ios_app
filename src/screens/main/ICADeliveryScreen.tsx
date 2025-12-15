@@ -20,8 +20,8 @@ import apiClient from '../../api/ApiClient';
 import { useAuthStore } from '../../stores/authStore';
 import { useTheme } from '../../theme/ThemeContext';
 
-// Design colors matching Kotlin app
-const designColors = {
+// Static design colors for StyleSheet (dynamic colors applied inline)
+const staticDesignColors = {
   primaryRed: '#E6002A',
   backgroundDark: '#121212',
   surfaceDark: '#1E1E1E',
@@ -82,7 +82,7 @@ const showToast = (type: 'success' | 'error' | 'info', text1: string, text2?: st
 };
 
 const ICADeliveryScreen = () => {
-  const { colors } = useTheme();
+  const { colors, designColors, isDark } = useTheme();
   const { profile } = useAuthStore();
   const userName = profile?.name || profile?.email || 'Current User';
 
@@ -374,22 +374,22 @@ const ICADeliveryScreen = () => {
 
   // Render group card matching Kotlin design
   const renderGroupCard = ({ item: group }: { item: ICADeliveryGroup }) => (
-    <View style={styles.groupCard}>
+    <View style={[styles.groupCard, { backgroundColor: designColors.cardBackground, ...(isDark ? {} : { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }) }]}>
       <View style={styles.groupHeader}>
         <View style={styles.groupInfo}>
-          <Text style={styles.groupUserName}>{group.userName}</Text>
+          <Text style={[styles.groupUserName, { color: designColors.textPrimary }]}>{group.userName}</Text>
           
           <View style={styles.groupMetaRow}>
-            <View style={styles.timeOfDayBadge}>
-              <Text style={styles.timeOfDayText}>{group.timeOfDay}</Text>
+            <View style={[styles.timeOfDayBadge, { backgroundColor: designColors.primaryRed + '20' }]}>
+              <Text style={[styles.timeOfDayText, { color: designColors.primaryRed }]}>{group.timeOfDay}</Text>
             </View>
-            <Text style={styles.submittedDate}>{formatSubmittedDate(group.submittedAt)}</Text>
+            <Text style={[styles.submittedDate, { color: designColors.textSecondary }]}>{formatSubmittedDate(group.submittedAt)}</Text>
           </View>
           
           {/* Item types list */}
           <View style={styles.itemsColumn}>
             {group.items.map((item, index) => (
-              <Text key={index} style={styles.itemTypeName}>{item.type}</Text>
+              <Text key={index} style={[styles.itemTypeName, { color: designColors.textPrimary }]}>{item.type}</Text>
             ))}
           </View>
         </View>
@@ -398,17 +398,17 @@ const ICADeliveryScreen = () => {
         <View style={styles.groupActions}>
           <View style={styles.iconButtonRow}>
             <TouchableOpacity onPress={() => handleOpenEditModal(group)} style={styles.iconButton}>
-              <Icon name="edit" size={22} color={designColors.textSecondary} />
+              <Icon name="edit" size={22} color={staticDesignColors.textSecondary} />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => handleDeleteGroup(group)} style={styles.iconButton}>
-              <Icon name="delete" size={22} color={designColors.primaryRed} />
+              <Icon name="delete" size={22} color={staticDesignColors.primaryRed} />
             </TouchableOpacity>
           </View>
           
           {/* Amounts aligned with items */}
           <View style={styles.amountsColumn}>
             {group.items.map((item, index) => (
-              <Text key={index} style={styles.itemAmount}>{item.amount}</Text>
+              <Text key={index} style={[styles.itemAmount, { color: designColors.textPrimary }]}>{item.amount}</Text>
             ))}
           </View>
         </View>
@@ -418,41 +418,41 @@ const ICADeliveryScreen = () => {
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={designColors.primaryRed} />
-        <Text style={styles.loadingText}>Loading ICA delivery records...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: designColors.background }]}>
+        <ActivityIndicator size="large" color={staticDesignColors.primaryRed} />
+        <Text style={[styles.loadingText, { color: designColors.textSecondary }]}>Loading ICA delivery records...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: designColors.background }]}>
       {/* Header */}
-      <Text style={styles.headerTitle}>ICA Delivery Records</Text>
+      <Text style={[styles.headerTitle, { color: designColors.textPrimary }]}>ICA Delivery Records</Text>
       
       {/* Filter Section */}
-      <View style={styles.filterCard}>
-        <Text style={styles.filterTitle}>Filter by Date Range</Text>
+      <View style={[styles.filterCard, { backgroundColor: designColors.cardBackground }]}>
+        <Text style={[styles.filterTitle, { color: designColors.textPrimary }]}>Filter by Date Range</Text>
         
         <View style={styles.dateInputRow}>
           <View style={styles.dateInputWrapper}>
-            <Text style={styles.dateInputLabel}>Start Date</Text>
+            <Text style={[styles.dateInputLabel, { color: designColors.textSecondary }]}>Start Date</Text>
             <TouchableOpacity 
-              style={styles.dateInput}
+              style={[styles.dateInput, { backgroundColor: designColors.surfaceVariant, borderColor: designColors.divider }]}
               onPress={() => setShowStartDatePicker(true)}
             >
-              <Text style={styles.dateInputText}>{startDate || 'YYYY-MM-DD'}</Text>
+              <Text style={[styles.dateInputText, { color: designColors.textPrimary }]}>{startDate || 'YYYY-MM-DD'}</Text>
               <Icon name="calendar-today" size={20} color={designColors.textSecondary} />
             </TouchableOpacity>
           </View>
           
           <View style={styles.dateInputWrapper}>
-            <Text style={styles.dateInputLabel}>End Date</Text>
+            <Text style={[styles.dateInputLabel, { color: designColors.textSecondary }]}>End Date</Text>
             <TouchableOpacity 
-              style={styles.dateInput}
+              style={[styles.dateInput, { backgroundColor: designColors.surfaceVariant, borderColor: designColors.divider }]}
               onPress={() => setShowEndDatePicker(true)}
             >
-              <Text style={styles.dateInputText}>{endDate || 'YYYY-MM-DD'}</Text>
+              <Text style={[styles.dateInputText, { color: designColors.textPrimary }]}>{endDate || 'YYYY-MM-DD'}</Text>
               <Icon name="calendar-today" size={20} color={designColors.textSecondary} />
             </TouchableOpacity>
           </View>
@@ -485,7 +485,7 @@ const ICADeliveryScreen = () => {
               setStartDate(selectedDate.toISOString().split('T')[0]);
             }
           }}
-          themeVariant="dark"
+          themeVariant={isDark ? 'dark' : 'light'}
         />
       )}
       
@@ -502,13 +502,13 @@ const ICADeliveryScreen = () => {
               setEndDate(selectedDate.toISOString().split('T')[0]);
             }
           }}
-          themeVariant="dark"
+          themeVariant={isDark ? 'dark' : 'light'}
         />
       )}
       
       {/* Records List */}
       {groupedRecords.length === 0 ? (
-        <View style={styles.emptyCard}>
+        <View style={[styles.emptyCard, { backgroundColor: designColors.cardBackground }]}>
           <Text style={styles.emptyText}>No ICA delivery records found</Text>
         </View>
       ) : (
@@ -521,8 +521,8 @@ const ICADeliveryScreen = () => {
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={handleRefresh}
-              colors={[designColors.primaryRed]}
-              tintColor={designColors.primaryRed}
+              colors={[staticDesignColors.primaryRed]}
+              tintColor={staticDesignColors.primaryRed}
             />
           }
         />
@@ -541,39 +541,39 @@ const ICADeliveryScreen = () => {
         onRequestClose={() => !isSubmitting && !showConfirmation && setAddModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { backgroundColor: designColors.surfaceVariant }]}>
             {/* Show confirmation view or form view */}
             {showConfirmation ? (
               // Confirmation View
               <View style={styles.confirmationContainer}>
-                <Text style={styles.confirmTitle}>Confirm ICA Delivery Order</Text>
-                <Text style={styles.confirmText}>You are about to submit the following order:</Text>
+                <Text style={[styles.confirmTitle, { color: designColors.textPrimary }]}>Confirm ICA Delivery Order</Text>
+                <Text style={[styles.confirmText, { color: designColors.textSecondary }]}>You are about to submit the following order:</Text>
                 
-                <View style={styles.confirmItemsCard}>
+                <View style={[styles.confirmItemsCard, { backgroundColor: designColors.cardBackground }]}>
                   {entries.filter(e => e.amount.trim() !== '').map((entry, index) => (
-                    <Text key={index} style={styles.confirmItemText}>
+                    <Text key={index} style={[styles.confirmItemText, { color: designColors.textPrimary }]}>
                       {entry.type}: {entry.amount} units - {entry.timeOfDay}
                     </Text>
                   ))}
                 </View>
                 
-                <Text style={styles.confirmSubmittedBy}>Submitted by: {userName}</Text>
+                <Text style={[styles.confirmSubmittedBy, { color: designColors.textSecondary }]}>Submitted by: {userName}</Text>
                 
                 {errorMessage && (
-                  <Text style={styles.errorMessage}>{errorMessage}</Text>
+                  <Text style={[styles.errorMessage, { color: designColors.errorRed }]}>{errorMessage}</Text>
                 )}
                 
                 <View style={styles.confirmButtonRow}>
                   <TouchableOpacity 
-                    style={styles.confirmCancelButton}
+                    style={[styles.confirmCancelButton, { borderColor: designColors.borderLight }]}
                     onPress={() => setShowConfirmation(false)}
                     disabled={isSubmitting}
                   >
-                    <Text style={styles.confirmCancelText}>Cancel</Text>
+                    <Text style={[styles.confirmCancelText, { color: designColors.textPrimary }]}>Cancel</Text>
                   </TouchableOpacity>
                   
                   <TouchableOpacity 
-                    style={styles.confirmSubmitButton}
+                    style={[styles.confirmSubmitButton, { backgroundColor: staticDesignColors.primaryRed }]}
                     onPress={confirmSubmit}
                     disabled={isSubmitting}
                   >
@@ -588,20 +588,20 @@ const ICADeliveryScreen = () => {
             ) : (
               // Form View
               <>
-                <Text style={styles.modalTitle}>ICA Delivery Order</Text>
+                <Text style={[styles.modalTitle, { color: designColors.textPrimary }]}>ICA Delivery Order</Text>
             
                 <ScrollView style={styles.modalScrollView} showsVerticalScrollIndicator={false}>
                   {/* Quick Presets */}
                   <View style={styles.presetsSection}>
-                    <Text style={styles.presetLabel}>Quick Presets:</Text>
+                    <Text style={[styles.presetLabel, { color: designColors.textSecondary }]}>Quick Presets:</Text>
                     <View style={styles.presetsRow}>
                       {QUICK_PRESETS.map((preset, index) => (
                         <TouchableOpacity
                           key={index}
-                          style={styles.presetButton}
+                          style={[styles.presetButton, { backgroundColor: designColors.cardBackground, borderColor: designColors.borderLight }]}
                           onPress={() => applyPreset(preset.amounts, preset.timeOfDay)}
                         >
-                          <Text style={styles.presetButtonText}>{preset.label}</Text>
+                          <Text style={[styles.presetButtonText, { color: designColors.textPrimary }]}>{preset.label}</Text>
                         </TouchableOpacity>
                   ))}
                 </View>
@@ -609,15 +609,15 @@ const ICADeliveryScreen = () => {
               
               {/* Entry Cards */}
               {entries.map((entry, index) => (
-                <View key={index} style={styles.entryCard}>
+                <View key={index} style={[styles.entryCard, { backgroundColor: designColors.cardBackground, borderColor: designColors.borderLight, ...(isDark ? {} : { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }) }]}>
                   <View style={styles.entryRow}>
-                    <Text style={styles.entryTypeName}>{entry.type}</Text>
+                    <Text style={[styles.entryTypeName, { color: designColors.textPrimary }]}>{entry.type}</Text>
                   </View>
                   <View style={styles.entryInputRow}>
                     <View style={styles.amountInputWrapper}>
-                      <Text style={styles.amountInputLabel}>Amount</Text>
+                      <Text style={[styles.amountInputLabel, { color: designColors.textSecondary }]}>Amount</Text>
                       <TextInput
-                        style={styles.amountInput}
+                        style={[styles.amountInput, { backgroundColor: designColors.surfaceVariant, borderColor: designColors.borderLight, color: designColors.textPrimary }]}
                         value={entry.amount}
                         onChangeText={(text) => updateEntryAmount(index, text)}
                         placeholder="0"
@@ -628,9 +628,9 @@ const ICADeliveryScreen = () => {
                     
                     {/* Time of Day dropdown - on each entry like Kotlin */}
                     <View style={styles.timeInputWrapper}>
-                      <Text style={styles.timeInputLabel}>Time of Day</Text>
+                      <Text style={[styles.timeInputLabel, { color: designColors.textSecondary }]}>Time of Day</Text>
                       <TouchableOpacity 
-                        style={styles.timeDropdownTrigger}
+                        style={[styles.timeDropdownTrigger, { backgroundColor: designColors.surfaceVariant, borderColor: designColors.borderLight }]}
                         onPress={() => {
                           // Use first entry's dropdown state to control all (they sync anyway)
                           if (index === 0) {
@@ -642,8 +642,8 @@ const ICADeliveryScreen = () => {
                           }
                         }}
                       >
-                        <Text style={styles.timeDropdownText}>{entry.timeOfDay}</Text>
-                        <Icon name="arrow-drop-down" size={24} color="#FFFFFF" />
+                        <Text style={[styles.timeDropdownText, { color: designColors.textPrimary }]}>{entry.timeOfDay}</Text>
+                        <Icon name="arrow-drop-down" size={24} color={designColors.textSecondary} />
                       </TouchableOpacity>
                       
                       {/* Dropdown menu only on first entry */}
@@ -674,15 +674,15 @@ const ICADeliveryScreen = () => {
             {/* Action buttons */}
             <View style={styles.modalButtonRow}>
               <TouchableOpacity 
-                style={styles.cancelButton}
+                style={[styles.cancelButton, { borderColor: designColors.borderLight }]}
                 onPress={() => setAddModalVisible(false)}
                 disabled={isSubmitting}
               >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+                <Text style={[styles.cancelButtonText, { color: designColors.textPrimary }]}>Cancel</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
-                style={styles.submitButton}
+                style={[styles.submitButton, { backgroundColor: staticDesignColors.primaryRed }]}
                 onPress={handleSubmitDelivery}
                 disabled={isSubmitting}
               >
@@ -707,33 +707,33 @@ const ICADeliveryScreen = () => {
         onRequestClose={() => !isSubmitting && setEditModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Edit ICA Delivery</Text>
+          <View style={[styles.modalContent, { backgroundColor: designColors.surfaceVariant }]}>
+            <Text style={[styles.modalTitle, { color: designColors.textPrimary }]}>Edit ICA Delivery</Text>
             
             <ScrollView style={styles.modalScrollView} showsVerticalScrollIndicator={false}>
               {/* Time of Day Selector */}
               <View style={[styles.editTimeSection, { zIndex: 1000 }]}>
-                <Text style={styles.editTimeLabel}>Time of Day</Text>
+                <Text style={[styles.editTimeLabel, { color: designColors.textSecondary }]}>Time of Day</Text>
                 <TouchableOpacity 
-                  style={styles.editTimeButton}
+                  style={[styles.editTimeButton, { backgroundColor: designColors.cardBackground, borderColor: designColors.borderLight }]}
                   onPress={() => setShowEditTimeDropdown(!showEditTimeDropdown)}
                 >
-                  <Text style={styles.editTimeText}>{entries[0]?.timeOfDay || 'Morning'}</Text>
-                  <Icon name="arrow-drop-down" size={24} color={designColors.textSecondary} />
+                  <Text style={[styles.editTimeText, { color: designColors.textPrimary }]}>{entries[0]?.timeOfDay || 'Morning'}</Text>
+                  <Icon name="arrow-drop-down" size={24} color={staticDesignColors.textSecondary} />
                 </TouchableOpacity>
                 
                 {showEditTimeDropdown && (
-                  <View style={styles.editTimeDropdownVisible}>
+                  <View style={[styles.editTimeDropdownVisible, { backgroundColor: designColors.surfaceVariant, borderColor: designColors.borderLight }]}>
                     {['Morning', 'Afternoon'].map(time => (
                       <TouchableOpacity
                         key={time}
-                        style={styles.editTimeOptionVisible}
+                        style={[styles.editTimeOptionVisible, { backgroundColor: designColors.surfaceVariant, borderBottomColor: designColors.borderLight }]}
                         onPress={() => {
                           updateTimeOfDay(time);
                           setShowEditTimeDropdown(false);
                         }}
                       >
-                        <Text style={styles.editTimeOptionText}>{time}</Text>
+                        <Text style={[styles.editTimeOptionText, { color: designColors.textPrimary }]}>{time}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -742,10 +742,10 @@ const ICADeliveryScreen = () => {
               
               {/* Edit entries */}
               {entries.map((entry, index) => (
-                <View key={index} style={styles.editEntryRow}>
-                  <Text style={styles.editEntryType}>{entry.type}</Text>
+                <View key={index} style={[styles.editEntryRow, { borderBottomColor: designColors.borderLight }]}>
+                  <Text style={[styles.editEntryType, { color: designColors.textPrimary }]}>{entry.type}</Text>
                   <TextInput
-                    style={styles.editAmountInput}
+                    style={[styles.editAmountInput, { backgroundColor: designColors.surfaceVariant, borderColor: designColors.borderLight, color: designColors.textPrimary }]}
                     value={entry.amount}
                     onChangeText={(text) => updateEntryAmount(index, text)}
                     keyboardType="default"
@@ -760,15 +760,15 @@ const ICADeliveryScreen = () => {
             
             <View style={styles.modalButtonRow}>
               <TouchableOpacity 
-                style={styles.cancelButton}
+                style={[styles.cancelButton, { borderColor: designColors.borderLight }]}
                 onPress={() => { setEditModalVisible(false); setGroupToEdit(null); setShowEditTimeDropdown(false); }}
                 disabled={isSubmitting}
               >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+                <Text style={[styles.cancelButtonText, { color: designColors.textPrimary }]}>Cancel</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
-                style={styles.submitButton}
+                style={[styles.submitButton, { backgroundColor: staticDesignColors.primaryRed }]}
                 onPress={handleUpdateDelivery}
                 disabled={isSubmitting}
               >
@@ -791,18 +791,18 @@ const ICADeliveryScreen = () => {
         onRequestClose={() => !isSubmitting && setDeleteDialogVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.deleteDialogContent}>
-            <Icon name="delete" size={48} color={designColors.primaryRed} style={styles.deleteIcon} />
-            <Text style={styles.deleteTitle}>Delete ICA Delivery Record</Text>
-            <Text style={styles.deleteText}>Are you sure you want to delete this record? This action cannot be undone.</Text>
+          <View style={[styles.deleteDialogContent, { backgroundColor: designColors.surfaceVariant }]}>
+            <Icon name="delete" size={48} color={staticDesignColors.primaryRed} style={styles.deleteIcon} />
+            <Text style={[styles.deleteTitle, { color: designColors.textPrimary }]}>Delete ICA Delivery Record</Text>
+            <Text style={[styles.deleteText, { color: designColors.textSecondary }]}>Are you sure you want to delete this record? This action cannot be undone.</Text>
             
             <View style={styles.deleteButtonRow}>
               <TouchableOpacity 
-                style={styles.deleteCancelButton}
+                style={[styles.deleteCancelButton, { borderColor: designColors.borderLight }]}
                 onPress={() => setDeleteDialogVisible(false)}
                 disabled={isSubmitting}
               >
-                <Text style={styles.deleteCancelText}>Cancel</Text>
+                <Text style={[styles.deleteCancelText, { color: designColors.textPrimary }]}>Cancel</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
@@ -827,23 +827,23 @@ const ICADeliveryScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: designColors.backgroundDark,
+    backgroundColor: staticDesignColors.backgroundDark,
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: designColors.backgroundDark,
+    backgroundColor: staticDesignColors.backgroundDark,
     justifyContent: 'center',
     alignItems: 'center',
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 8,
@@ -851,7 +851,7 @@ const styles = StyleSheet.create({
   
   // Filter Section
   filterCard: {
-    backgroundColor: designColors.surfaceDark,
+    backgroundColor: staticDesignColors.surfaceDark,
     marginHorizontal: 16,
     marginBottom: 8,
     borderRadius: 12,
@@ -860,7 +860,7 @@ const styles = StyleSheet.create({
   filterTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     marginBottom: 8,
   },
   dateInputRow: {
@@ -872,23 +872,23 @@ const styles = StyleSheet.create({
   },
   dateInputLabel: {
     fontSize: 12,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
     marginBottom: 4,
   },
   dateInput: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: designColors.backgroundDark,
+    backgroundColor: staticDesignColors.backgroundDark,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: designColors.borderLight,
+    borderColor: staticDesignColors.borderLight,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
   dateInputText: {
     flex: 1,
     fontSize: 14,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   filterButtonRow: {
     flexDirection: 'row',
@@ -900,7 +900,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: designColors.primaryRed,
+    backgroundColor: staticDesignColors.primaryRed,
     borderRadius: 8,
     paddingVertical: 10,
     gap: 4,
@@ -918,14 +918,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: designColors.borderLight,
+    borderColor: staticDesignColors.borderLight,
     paddingVertical: 10,
     gap: 4,
   },
   clearButtonText: {
     fontSize: 14,
     fontWeight: '500',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   
   // List
@@ -951,7 +951,7 @@ const styles = StyleSheet.create({
   groupUserName: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   groupMetaRow: {
     flexDirection: 'row',
@@ -967,18 +967,18 @@ const styles = StyleSheet.create({
   },
   timeOfDayText: {
     fontSize: 12,
-    color: designColors.successGreen,
+    color: staticDesignColors.successGreen,
   },
   submittedDate: {
     fontSize: 12,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
   },
   itemsColumn: {
     marginTop: 8,
   },
   itemTypeName: {
     fontSize: 14,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     paddingVertical: 2,
   },
   groupActions: {
@@ -996,7 +996,7 @@ const styles = StyleSheet.create({
   itemAmount: {
     fontSize: 14,
     fontWeight: '500',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     paddingVertical: 2,
     textAlign: 'right',
   },
@@ -1005,7 +1005,7 @@ const styles = StyleSheet.create({
   emptyCard: {
     flex: 1,
     margin: 16,
-    backgroundColor: designColors.surfaceDark,
+    backgroundColor: staticDesignColors.surfaceDark,
     borderRadius: 12,
     padding: 32,
     justifyContent: 'center',
@@ -1013,7 +1013,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
   },
   
   // FAB
@@ -1024,7 +1024,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: designColors.primaryRed,
+    backgroundColor: staticDesignColors.primaryRed,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 6,
@@ -1045,14 +1045,14 @@ const styles = StyleSheet.create({
   modalContent: {
     width: '95%',
     maxHeight: '90%',
-    backgroundColor: designColors.cardDark,
+    backgroundColor: staticDesignColors.cardDark,
     borderRadius: 16,
     padding: 16,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     textAlign: 'center',
     marginBottom: 16,
   },
@@ -1066,7 +1066,7 @@ const styles = StyleSheet.create({
   },
   presetLabel: {
     fontSize: 14,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
     marginBottom: 8,
   },
   presetsRow: {
@@ -1080,11 +1080,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: designColors.borderLight,
+    borderColor: staticDesignColors.borderLight,
   },
   presetButtonText: {
     fontSize: 12,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   
   // Entry Card
@@ -1094,7 +1094,7 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: designColors.borderLight,
+    borderColor: staticDesignColors.borderLight,
   },
   entryRow: {
     marginBottom: 8,
@@ -1102,7 +1102,7 @@ const styles = StyleSheet.create({
   entryTypeName: {
     fontSize: 14,
     fontWeight: '600',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   entryInputRow: {
     flexDirection: 'row',
@@ -1113,26 +1113,27 @@ const styles = StyleSheet.create({
   },
   amountInputLabel: {
     fontSize: 12,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
     marginBottom: 4,
   },
   amountInput: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: designColors.borderLight,
+    borderColor: staticDesignColors.borderLight,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   timeInputWrapper: {
     flex: 1,
     position: 'relative',
+    zIndex: 1000,
   },
   timeInputLabel: {
     fontSize: 12,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
     marginBottom: 4,
   },
   timeDropdownTrigger: {
@@ -1140,24 +1141,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderColor: designColors.borderLight,
+    borderColor: staticDesignColors.borderLight,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
   timeDropdownText: {
     fontSize: 14,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   timeDropdownMenu: {
     position: 'absolute',
     top: '100%',
     left: 0,
     right: 0,
-    backgroundColor: designColors.cardDark,
+    backgroundColor: staticDesignColors.cardDark,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: designColors.borderLight,
+    borderColor: staticDesignColors.borderLight,
     marginTop: 4,
     zIndex: 1000,
   },
@@ -1165,17 +1166,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: designColors.borderLight,
+    borderBottomColor: staticDesignColors.borderLight,
   },
   timeDropdownItemText: {
     fontSize: 14,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   
   // Error Message
   errorMessage: {
     fontSize: 12,
-    color: designColors.errorRed,
+    color: staticDesignColors.errorRed,
     marginTop: 8,
   },
   
@@ -1190,19 +1191,19 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: designColors.borderLight,
+    borderColor: staticDesignColors.borderLight,
     alignItems: 'center',
   },
   cancelButtonText: {
     fontSize: 14,
     fontWeight: '500',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   submitButton: {
     flex: 1,
     paddingVertical: 14,
     borderRadius: 8,
-    backgroundColor: designColors.primaryRed,
+    backgroundColor: staticDesignColors.primaryRed,
     alignItems: 'center',
   },
   submitButtonText: {
@@ -1224,12 +1225,12 @@ const styles = StyleSheet.create({
   confirmTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     marginBottom: 8,
   },
   confirmText: {
     fontSize: 14,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     marginBottom: 12,
   },
   confirmItemsCard: {
@@ -1240,12 +1241,12 @@ const styles = StyleSheet.create({
   },
   confirmItemText: {
     fontSize: 12,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     paddingVertical: 2,
   },
   confirmSubmittedBy: {
     fontSize: 12,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
     marginBottom: 16,
   },
   confirmButtonRow: {
@@ -1259,10 +1260,10 @@ const styles = StyleSheet.create({
   },
   confirmCancelText: {
     fontSize: 14,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   confirmSubmitButton: {
-    backgroundColor: designColors.successGreen,
+    backgroundColor: staticDesignColors.successGreen,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
@@ -1280,7 +1281,7 @@ const styles = StyleSheet.create({
   },
   editTimeLabel: {
     fontSize: 12,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
     marginBottom: 4,
   },
   editTimeButton: {
@@ -1288,24 +1289,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderColor: designColors.borderLight,
+    borderColor: staticDesignColors.borderLight,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
   editTimeText: {
     fontSize: 14,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   editTimeDropdown: {
     position: 'absolute',
     top: '100%',
     left: 0,
     right: 0,
-    backgroundColor: designColors.cardDark,
+    backgroundColor: staticDesignColors.cardDark,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: designColors.borderLight,
+    borderColor: staticDesignColors.borderLight,
     marginTop: 4,
     zIndex: 1000,
   },
@@ -1314,10 +1315,10 @@ const styles = StyleSheet.create({
     top: 70,
     left: 0,
     right: 0,
-    backgroundColor: designColors.surfaceDark,
+    backgroundColor: staticDesignColors.surfaceDark,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: designColors.textSecondary,
+    borderColor: staticDesignColors.textSecondary,
     zIndex: 9999,
     elevation: 10,
     shadowColor: '#000',
@@ -1332,13 +1333,13 @@ const styles = StyleSheet.create({
   editTimeOptionVisible: {
     paddingHorizontal: 16,
     paddingVertical: 14,
-    backgroundColor: designColors.surfaceDark,
+    backgroundColor: staticDesignColors.surfaceDark,
     borderBottomWidth: 1,
-    borderBottomColor: designColors.borderLight,
+    borderBottomColor: staticDesignColors.borderLight,
   },
   editTimeOptionText: {
     fontSize: 14,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   editEntryRow: {
     flexDirection: 'row',
@@ -1346,28 +1347,28 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: designColors.borderLight,
+    borderBottomColor: staticDesignColors.borderLight,
   },
   editEntryType: {
     flex: 1,
     fontSize: 14,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   editAmountInput: {
     width: 80,
     borderWidth: 1,
-    borderColor: designColors.borderLight,
+    borderColor: staticDesignColors.borderLight,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
     fontSize: 14,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     textAlign: 'center',
   },
   
   // Delete Dialog
   deleteDialogContent: {
-    backgroundColor: designColors.surfaceDark,
+    backgroundColor: staticDesignColors.surfaceDark,
     borderRadius: 16,
     padding: 24,
     width: '85%',
@@ -1379,12 +1380,12 @@ const styles = StyleSheet.create({
   deleteTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     marginBottom: 8,
   },
   deleteText: {
     fontSize: 14,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
     textAlign: 'center',
     marginBottom: 20,
   },
@@ -1398,18 +1399,18 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: designColors.borderLight,
+    borderColor: staticDesignColors.borderLight,
     alignItems: 'center',
   },
   deleteCancelText: {
     fontSize: 14,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   deleteConfirmButton: {
     flex: 1,
     paddingVertical: 12,
     borderRadius: 8,
-    backgroundColor: designColors.primaryRed,
+    backgroundColor: staticDesignColors.primaryRed,
     alignItems: 'center',
   },
   deleteConfirmText: {

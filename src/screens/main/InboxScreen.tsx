@@ -16,11 +16,12 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import apiClient from '../../api/ApiClient';
-import { Thread } from '../../models/Inventory';
+import { Thread } from '../../models';
 import { MainStackParamList } from '../../navigation/types';
 import { socketService } from '../../services/SocketService';
 import { useAuthStore } from '../../stores/authStore';
 import { useMessageStore } from '../../stores/messageStore';
+import { useTheme } from '../../theme/ThemeContext';
 
 // API config - same as TopAppBar and ApiClient
 const API_BASE_URL = 'https://stock-nexus-84-main-2-1.onrender.com/api';
@@ -49,6 +50,7 @@ interface OnlineMember {
 export const InboxScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { profile: currentUser } = useAuthStore();
+  const { isDark, designColors } = useTheme();
   // Subscribe to messages state directly (re-renders when messages change!)
   const messages = useMessageStore((state) => state.messages);
   
@@ -365,7 +367,7 @@ export const InboxScreen: React.FC = () => {
       <TouchableOpacity
         style={[
           styles.threadItem,
-          hasUnread && styles.threadItemUnread,
+          { backgroundColor: hasUnread ? designColors.surfaceVariant : designColors.cardBackground },
         ]}
         onPress={() => {
           if (item.participant_id) {
@@ -373,7 +375,7 @@ export const InboxScreen: React.FC = () => {
             navigation.navigate('Chat', { 
               userId: item.participant_id,
               userName: item.participant_name,
-              userPhoto: item.participant_avatar,
+              userPhoto: item.participant_avatar || undefined,
             });
           }
         }}
@@ -406,14 +408,14 @@ export const InboxScreen: React.FC = () => {
           {/* Thread info */}
           <View style={styles.threadInfo}>
             <View style={styles.threadHeader}>
-              <Text style={styles.participantName} numberOfLines={1}>
+              <Text style={[styles.participantName, { color: designColors.textPrimary }]} numberOfLines={1}>
                 {item.participant_name}
               </Text>
-              <Text style={styles.timestamp}>
+              <Text style={[styles.timestamp, { color: designColors.textMuted }]}>
                 {formatTimestamp(item.updated_at)}
               </Text>
             </View>
-            <Text style={styles.lastMessage} numberOfLines={1}>
+            <Text style={[styles.lastMessage, { color: designColors.textMuted }]} numberOfLines={1}>
               {item.last_message}
             </Text>
           </View>
@@ -427,28 +429,28 @@ export const InboxScreen: React.FC = () => {
             </View>
           )}
         </View>
-        <View style={styles.divider} />
+        <View style={[styles.divider, { backgroundColor: designColors.borderLight }]} />
       </TouchableOpacity>
     );
   };
 
   if (loading) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: designColors.background }]}>
         <View style={styles.loader}>
-          <ActivityIndicator size="large" color="#E6002A" />
+          <ActivityIndicator size="large" color={designColors.primaryRed} />
         </View>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: designColors.background }]}>
       {/* Content */}
       {threads.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Icon name="chat-bubble-outline" size={64} color="#808080" />
-          <Text style={styles.emptyText}>
+          <Icon name="chat-bubble-outline" size={64} color={designColors.textMuted} />
+          <Text style={[styles.emptyText, { color: designColors.textSecondary }]}>
             No messages yet.{"\n"}Pull down to refresh.
           </Text>
         </View>
@@ -462,8 +464,8 @@ export const InboxScreen: React.FC = () => {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={['#E6002A']}
-              tintColor="#E6002A"
+              colors={[designColors.primaryRed]}
+              tintColor={designColors.primaryRed}
             />
           }
         />
@@ -515,6 +517,7 @@ export const InboxScreen: React.FC = () => {
           });
         }}
         currentUserId={currentUser?.id || ''}
+        designColors={designColors}
       />
     </View>
   );
@@ -532,6 +535,7 @@ interface ComposeDialogProps {
   onClose: () => void;
   onUserSelected: (user: ComposeUser) => void;
   currentUserId: string;
+  designColors: typeof import('../../theme/colors').getDesignColors extends (...args: any[]) => infer R ? R : never;
 }
 
 const ComposeMessageDialog: React.FC<ComposeDialogProps> = ({
@@ -539,6 +543,7 @@ const ComposeMessageDialog: React.FC<ComposeDialogProps> = ({
   onClose,
   onUserSelected,
   currentUserId,
+  designColors,
 }) => {
   const [users, setUsers] = useState<ComposeUser[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<ComposeUser[]>([]);
@@ -554,28 +559,21 @@ const ComposeMessageDialog: React.FC<ComposeDialogProps> = ({
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const token = await AsyncStorage.getItem(TOKEN_KEY);
-      if (!token) return;
+      // Use apiClient.getStaff() - same as Kotlin app which uses /users/staff endpoint
+      const staffList = await apiClient.getStaff();
       
-      const response = await fetch(`${API_BASE_URL}/users`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const userList = (staffList || [])
+        .filter((u: any) => u.id !== currentUserId)
+        .map((u: any) => ({
+          id: u.id,
+          name: u.name || 'Unknown User',
+          photoUrl: u.photoUrl || u.photo_url,
+        }));
       
-      if (response.ok) {
-        const data = await response.json();
-        const userList = (data.data || data || [])
-          .filter((u: any) => u.id !== currentUserId)
-          .map((u: any) => ({
-            id: u.id,
-            name: u.name || 'Unknown User',
-            photoUrl: u.photo_url || u.photoUrl,
-          }));
-        setUsers(userList);
-        setFilteredUsers(userList);
-      }
+      setUsers(userList);
+      setFilteredUsers(userList);
+      
+      if (__DEV__) console.log('[ComposeDialog] Loaded', userList.length, 'users from /users/staff');
     } catch (error) {
       console.log('[ComposeDialog] Failed to fetch users:', error);
     } finally {
@@ -612,22 +610,22 @@ const ComposeMessageDialog: React.FC<ComposeDialogProps> = ({
       onRequestClose={onClose}
     >
       <View style={composeStyles.overlay}>
-        <View style={composeStyles.dialog}>
+        <View style={[composeStyles.dialog, { backgroundColor: designColors.cardBackground }]}>
           {/* Header */}
-          <View style={composeStyles.header}>
-            <Text style={composeStyles.title}>New Message</Text>
+          <View style={[composeStyles.header, { borderBottomColor: designColors.borderLight }]}>
+            <Text style={[composeStyles.title, { color: designColors.textPrimary }]}>New Message</Text>
             <TouchableOpacity onPress={onClose} style={composeStyles.closeBtn}>
-              <Icon name="close" size={24} color="#FFFFFF" />
+              <Icon name="close" size={24} color={designColors.textPrimary} />
             </TouchableOpacity>
           </View>
 
           {/* Search Input */}
-          <View style={composeStyles.searchContainer}>
-            <Icon name="search" size={20} color="#808080" />
+          <View style={[composeStyles.searchContainer, { backgroundColor: designColors.surfaceVariant }]}>
+            <Icon name="search" size={20} color={designColors.textMuted} />
             <TextInput
-              style={composeStyles.searchInput}
+              style={[composeStyles.searchInput, { color: designColors.textPrimary }]}
               placeholder="Search contacts..."
-              placeholderTextColor="#808080"
+              placeholderTextColor={designColors.textMuted}
               value={searchText}
               onChangeText={handleSearch}
               autoFocus
@@ -637,7 +635,7 @@ const ComposeMessageDialog: React.FC<ComposeDialogProps> = ({
           {/* User List */}
           {loading ? (
             <View style={composeStyles.loader}>
-              <ActivityIndicator size="large" color="#E6002A" />
+              <ActivityIndicator size="large" color={designColors.primaryRed} />
             </View>
           ) : (
             <FlatList
@@ -646,7 +644,7 @@ const ComposeMessageDialog: React.FC<ComposeDialogProps> = ({
               style={composeStyles.userList}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={composeStyles.userItem}
+                  style={[composeStyles.userItem, { borderBottomColor: designColors.borderLight }]}
                   onPress={() => onUserSelected(item)}
                 >
                   {item.photoUrl ? (
@@ -656,12 +654,12 @@ const ComposeMessageDialog: React.FC<ComposeDialogProps> = ({
                       <Text style={composeStyles.avatarText}>{getInitials(item.name)}</Text>
                     </View>
                   )}
-                  <Text style={composeStyles.userName}>{item.name}</Text>
+                  <Text style={[composeStyles.userName, { color: designColors.textPrimary }]}>{item.name}</Text>
                 </TouchableOpacity>
               )}
               ListEmptyComponent={
                 <View style={composeStyles.emptyContainer}>
-                  <Text style={composeStyles.emptyText}>No users found</Text>
+                  <Text style={[composeStyles.emptyText, { color: designColors.textMuted }]}>No users found</Text>
                 </View>
               }
             />
@@ -905,7 +903,7 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: 16,
-    bottom: 16,
+    bottom: 40,
     width: 56,
     height: 56,
     borderRadius: 28,

@@ -3,10 +3,13 @@ import {
     ActivityIndicator,
     Alert,
     FlatList,
+    LayoutAnimation,
+    Platform,
     RefreshControl,
     StyleSheet,
     Text,
     TouchableOpacity,
+    UIManager,
     View,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -16,8 +19,13 @@ import { Notification } from '../../models';
 import { useTheme } from '../../theme/ThemeContext';
 import { BorderRadius, Colors, FontSizes, Spacing } from '../../theme/colors';
 
+// Enable LayoutAnimation for Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
 const NotificationsScreen = () => {
-  const { colors } = useTheme();
+  const { isDark, colors, designColors } = useTheme();
   
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -46,23 +54,47 @@ const NotificationsScreen = () => {
     loadNotifications(true);
   };
 
-  const handleMarkAsRead = async (notificationId: string) => {
-    try {
-      await apiClient.markNotificationAsRead(notificationId);
-      setNotifications((prev) =>
-        prev.map((n) =>
-          n.id === notificationId ? { ...n, is_read: true } : n
-        )
-      );
-    } catch (error) {
+  const handleMarkAsRead = (notificationId: string) => {
+    // Optimistic update - animate and remove immediately for fast UX
+    LayoutAnimation.configureNext({
+      duration: 250,
+      update: {
+        type: LayoutAnimation.Types.easeOut,
+        property: LayoutAnimation.Properties.opacity,
+      },
+      delete: {
+        type: LayoutAnimation.Types.easeOut,
+        property: LayoutAnimation.Properties.opacity,
+        duration: 200,
+      },
+    });
+    // Remove the notification from the list immediately
+    setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+    
+    // Decrement badge count immediately (no API call, instant!)
+    apiClient.decrementBadgeCount();
+    
+    // Call API in background (fire and forget)
+    apiClient.markNotificationAsRead(notificationId).catch((error) => {
       console.log('Mark as read error:', error);
-    }
+    });
   };
 
   const handleMarkAllAsRead = async () => {
+    const currentCount = notifications.filter(n => !n.is_read).length;
     try {
       await apiClient.markAllNotificationsAsRead();
-      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+      // Clear all notifications with animation
+      LayoutAnimation.configureNext({
+        duration: 250,
+        update: { type: LayoutAnimation.Types.easeOut, property: LayoutAnimation.Properties.opacity },
+        delete: { type: LayoutAnimation.Types.easeOut, property: LayoutAnimation.Properties.opacity, duration: 200 },
+      });
+      setNotifications([]);
+      // Decrement badge by the count of unread notifications
+      for (let i = 0; i < currentCount; i++) {
+        apiClient.decrementBadgeCount();
+      }
       Alert.alert('Success', 'All notifications marked as read');
     } catch (error) {
       console.log('Mark all as read error:', error);
@@ -98,20 +130,20 @@ const NotificationsScreen = () => {
     }
   };
 
+  // Format date like Kotlin: "MMM dd, hh:mm a"
   const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-    
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    
-    return date.toLocaleDateString();
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch {
+      return dateString;
+    }
   };
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
@@ -120,36 +152,32 @@ const NotificationsScreen = () => {
     <TouchableOpacity
       style={[
         styles.notificationCard,
-        { backgroundColor: item.is_read ? colors.card : colors.surfaceVariant },
+        { 
+          backgroundColor: designColors.cardBackground,
+          ...(isDark ? {} : {
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.1,
+            shadowRadius: 2,
+            elevation: 2,
+          }),
+        },
       ]}
-      onPress={() => !item.is_read && handleMarkAsRead(item.id)}
+      onPress={() => handleMarkAsRead(item.id)}
+      activeOpacity={0.7}
     >
-      <View
-        style={[
-          styles.iconContainer,
-          { backgroundColor: getNotificationColor(item.type) + '20' },
-        ]}
-      >
-        <Icon
-          name={getNotificationIcon(item.type)}
-          size={24}
-          color={getNotificationColor(item.type)}
-        />
-      </View>
+      <Icon
+        name="schedule"
+        size={20}
+        color={designColors.textSecondary}
+        style={styles.itemIcon}
+      />
       
       <View style={styles.contentContainer}>
-        <View style={styles.headerRow}>
-          <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
-            {item.title}
-          </Text>
-          {!item.is_read && <View style={[styles.unreadDot, { backgroundColor: Colors.primary }]} />}
-        </View>
-        
-        <Text style={[styles.message, { color: colors.textSecondary }]} numberOfLines={2}>
+        <Text style={[styles.message, { color: designColors.textPrimary }]}>
           {item.message}
         </Text>
-        
-        <Text style={[styles.time, { color: colors.textSecondary }]}>
+        <Text style={[styles.time, { color: designColors.textSecondary }]}>
           {formatTime(item.created_at)}
         </Text>
       </View>
@@ -245,45 +273,26 @@ const styles = StyleSheet.create({
   },
   notificationCard: {
     flexDirection: 'row',
-    padding: Spacing.md,
-    borderRadius: BorderRadius.md,
-    marginBottom: Spacing.sm,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    alignItems: 'flex-start',
   },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
+  itemIcon: {
+    marginTop: 2,
   },
   contentContainer: {
     flex: 1,
-    marginLeft: Spacing.md,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  title: {
-    fontSize: FontSizes.md,
-    fontWeight: '600',
-    flex: 1,
-  },
-  unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginLeft: Spacing.sm,
+    marginLeft: 12,
   },
   message: {
-    fontSize: FontSizes.sm,
-    marginTop: Spacing.xs,
+    fontSize: 13,
     lineHeight: 18,
   },
   time: {
-    fontSize: FontSizes.xs,
-    marginTop: Spacing.xs,
+    fontSize: 11,
+    marginTop: 4,
   },
   emptyContainer: {
     alignItems: 'center',

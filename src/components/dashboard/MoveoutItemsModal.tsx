@@ -13,8 +13,9 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import apiClient from '../../api/ApiClient';
 import { MoveoutItem, MoveoutList } from '../../models';
 import { useAuthStore } from '../../stores/authStore';
+import { useTheme } from '../../theme/ThemeContext';
 
-// Design System Colors
+// Static colors for StyleSheet (overridden by inline styles)
 const colors = {
   primaryRed: '#E6002A',
   backgroundDark: '#121212',
@@ -42,6 +43,7 @@ const MoveoutItemsModal: React.FC<MoveoutItemsModalProps> = ({
   onItemProcessed,
 }) => {
   const { profile } = useAuthStore();
+  const { designColors } = useTheme();
   const [processingItemId, setProcessingItemId] = useState<string | null>(null);
   const [localItems, setLocalItems] = useState<MoveoutItem[]>([]);
 
@@ -106,14 +108,14 @@ const MoveoutItemsModal: React.FC<MoveoutItemsModalProps> = ({
       onRequestClose={onClose}
     >
       <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
+        <View style={[styles.modalContent, { backgroundColor: designColors.cardBackground }]}>
           {/* Header */}
-          <View style={styles.header}>
+          <View style={[styles.header, { borderBottomColor: designColors.borderLight }]}>
             <View style={styles.headerText}>
-              <Text style={styles.headerTitle}>
+              <Text style={[styles.headerTitle, { color: designColors.textPrimary }]}>
                 {moveoutList.title || 'Moveout List'}
               </Text>
-              <Text style={styles.headerDate}>
+              <Text style={[styles.headerDate, { color: designColors.textSecondary }]}>
                 {formatDate(moveoutList.created_at)}
               </Text>
             </View>
@@ -121,19 +123,19 @@ const MoveoutItemsModal: React.FC<MoveoutItemsModalProps> = ({
               onPress={onClose}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Icon name="close" size={24} color={colors.textPrimary} />
+              <Icon name="close" size={24} color={designColors.textPrimary} />
             </TouchableOpacity>
           </View>
 
           {/* Table Header */}
-          <View style={styles.tableHeader}>
-            <Text style={[styles.tableHeaderText, styles.columnName]}>
+          <View style={[styles.tableHeader, { backgroundColor: designColors.surfaceVariant }]}>
+            <Text style={[styles.tableHeaderText, styles.columnName, { color: designColors.textSecondary }]}>
               Item Name
             </Text>
-            <Text style={[styles.tableHeaderText, styles.columnQty]}>
+            <Text style={[styles.tableHeaderText, styles.columnQty, { color: designColors.textSecondary }]}>
               Requesting{'\n'}Quantity
             </Text>
-            <Text style={[styles.tableHeaderText, styles.columnAction]}>
+            <Text style={[styles.tableHeaderText, styles.columnAction, { color: designColors.textSecondary }]}>
               Action
             </Text>
           </View>
@@ -145,24 +147,24 @@ const MoveoutItemsModal: React.FC<MoveoutItemsModalProps> = ({
               const isProcessing = processingItemId === item.item_id;
 
               return (
-                <View key={item.id || item.item_id || index} style={styles.itemRow}>
-                  <Text style={[styles.itemText, styles.columnName]}>
+                <View key={item.id || item.item_id || index} style={[styles.itemRow, { borderBottomColor: designColors.borderLight }]}>
+                  <Text style={[styles.itemText, styles.columnName, { color: designColors.textPrimary }]}>
                     {item.item_name}
                   </Text>
-                  <Text style={[styles.itemText, styles.columnQty]}>
+                  <Text style={[styles.itemText, styles.columnQty, { color: designColors.textPrimary }]}>
                     {item.request_amount}
                   </Text>
                   <View style={styles.columnAction}>
                     {isCompleted ? (
-                      <Text style={styles.completedText}>Completed</Text>
+                      <Text style={[styles.completedText, { color: colors.successGreen }]}>Completed</Text>
                     ) : (
                       <TouchableOpacity
-                        style={styles.doneButton}
+                        style={[styles.doneButton, { backgroundColor: colors.primaryRed }]}
                         onPress={() => handleProcessItem(item)}
                         disabled={isProcessing}
                       >
                         {isProcessing ? (
-                          <ActivityIndicator size="small" color={colors.textPrimary} />
+                          <ActivityIndicator size="small" color="#FFFFFF" />
                         ) : (
                           <Text style={styles.doneButtonText}>Done</Text>
                         )}
@@ -176,9 +178,9 @@ const MoveoutItemsModal: React.FC<MoveoutItemsModalProps> = ({
 
           {/* Footer - Show completion status */}
           {allCompleted && localItems.length > 0 && (
-            <View style={styles.footer}>
+            <View style={[styles.footer, { borderTopColor: designColors.borderLight }]}>
               <Icon name="check-circle" size={20} color={colors.successGreen} />
-              <Text style={styles.footerText}>All items completed</Text>
+              <Text style={[styles.footerText, { color: colors.successGreen }]}>All items completed</Text>
             </View>
           )}
         </View>

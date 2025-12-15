@@ -17,9 +17,10 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import apiClient from '../../api/ApiClient';
 import { StockItem } from '../../models';
 import { useTheme } from '../../theme/ThemeContext';
+import { DesignColors } from '../../theme/colors';
 
-// Design colors matching Kotlin app
-const designColors = {
+// Static design colors for StyleSheet (dynamic colors applied inline)
+const staticDesignColors = {
   primaryRed: '#E6002A',
   backgroundDark: '#121212',
   cardDark: '#1E1E1E',
@@ -43,7 +44,7 @@ const showToast = (message: string, type: 'success' | 'error' | 'info' = 'succes
 };
 
 const StockOutScreen = () => {
-  const { colors } = useTheme();
+  const { colors, designColors, isDark } = useTheme();
 
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -295,7 +296,7 @@ const StockOutScreen = () => {
 
   if (isLoading) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: designColors.backgroundDark }]}>
+      <View style={[styles.loadingContainer, { backgroundColor: designColors.background }]}>
         <ActivityIndicator size="large" color={designColors.primaryRed} />
         <Text style={[styles.loadingText, { color: designColors.textSecondary }]}>
           Loading inventory...
@@ -305,7 +306,7 @@ const StockOutScreen = () => {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: designColors.backgroundDark }]}>
+    <View style={[styles.container, { backgroundColor: designColors.background }]}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -335,7 +336,11 @@ const StockOutScreen = () => {
         {/* Summary Cards */}
         <View style={styles.summaryCardsRow}>
           <TouchableOpacity
-            style={[styles.summaryCard, { backgroundColor: designColors.cardDark }]}
+            style={[
+              styles.summaryCard, 
+              { backgroundColor: designColors.cardBackground },
+              !isDark && { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6, elevation: 4 }
+            ]}
             onPress={() => setFilterType('all')}
           >
             <Icon name="inventory" size={24} color={designColors.primaryRed} />
@@ -348,7 +353,11 @@ const StockOutScreen = () => {
           </TouchableOpacity>
           
           <TouchableOpacity
-            style={[styles.summaryCard, { backgroundColor: designColors.cardDark }]}
+            style={[
+              styles.summaryCard, 
+              { backgroundColor: designColors.cardBackground },
+              !isDark && { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6, elevation: 4 }
+            ]}
             onPress={() => setFilterType('low')}
           >
             <Icon name="warning" size={24} color={designColors.warningOrange} />
@@ -361,7 +370,11 @@ const StockOutScreen = () => {
           </TouchableOpacity>
           
           <TouchableOpacity
-            style={[styles.summaryCard, { backgroundColor: designColors.cardDark }]}
+            style={[
+              styles.summaryCard, 
+              { backgroundColor: designColors.cardBackground },
+              !isDark && { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 6, elevation: 4 }
+            ]}
             onPress={() => setFilterType('critical')}
           >
             <Icon name="error" size={24} color={designColors.criticalRed} />
@@ -375,13 +388,21 @@ const StockOutScreen = () => {
         </View>
 
         {/* Search Card */}
-        <View style={[styles.searchCard, { backgroundColor: designColors.cardDark }]}>
+        <View style={[
+          styles.searchCard, 
+          { backgroundColor: designColors.cardBackground },
+          !isDark && { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }
+        ]}>
           <Text style={[styles.searchCardTitle, { color: designColors.textPrimary }]}>
             {filterType === 'low' ? 'Low Stock Items' : 
              filterType === 'critical' ? 'Critical Stock Items' : 
              'Current Stock Levels'}
           </Text>
-          <View style={[styles.searchInputContainer, { backgroundColor: designColors.surfaceVariant, borderColor: designColors.textSecondary }]}>
+          <View style={[
+            styles.searchInputContainer, 
+            { backgroundColor: designColors.surfaceVariant },
+            isDark ? { borderColor: designColors.textSecondary, borderWidth: 1 } : { borderWidth: 0, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 2 }
+          ]}>
             <Icon name="search" size={20} color={designColors.textSecondary} />
             <TextInput
               style={[styles.searchInput, { color: designColors.textPrimary }]}
@@ -427,12 +448,13 @@ const StockOutScreen = () => {
             onQuickStockOut={handleQuickStockOut}
             getImageSource={getImageSource}
             getStockStatus={getStockStatus}
+            designColors={designColors}
           />
         ))}
 
         {/* Empty State */}
         {Object.keys(groupedItems).length === 0 && !isLoading && (
-          <View style={[styles.emptyCard, { backgroundColor: designColors.cardDark }]}>
+          <View style={[styles.emptyCard, { backgroundColor: designColors.cardBackground }]}>
             <Text style={[styles.emptyText, { color: designColors.textSecondary }]}>
               {filterType === 'low' ? 'No low stock items' :
                filterType === 'critical' ? 'No critical stock items' :
@@ -451,6 +473,8 @@ const StockOutScreen = () => {
         unitType={unitType}
         reason={reason}
         isRemoving={isRemoving}
+        designColors={designColors}
+        isDark={isDark}
         onSelectItem={(item) => {
           setSelectedItem(item);
           setQuantity('');
@@ -490,6 +514,7 @@ interface CategorySectionProps {
   onQuickStockOut: (item: StockItem) => void;
   getImageSource: (item: StockItem) => { uri: string } | null;
   getStockStatus: (item: StockItem) => { color: string; label: string };
+  designColors: DesignColors;
 }
 
 const CategorySection: React.FC<CategorySectionProps> = ({
@@ -508,9 +533,10 @@ const CategorySection: React.FC<CategorySectionProps> = ({
   onQuickStockOut,
   getImageSource,
   getStockStatus,
+  designColors,
 }) => {
   return (
-    <View style={[styles.categoryCard, { backgroundColor: designColors.cardDark }]}>
+    <View style={[styles.categoryCard, { backgroundColor: designColors.cardBackground }]}>
       {/* Category Header */}
       <View style={styles.categoryHeader}>
         <View>
@@ -521,7 +547,11 @@ const CategorySection: React.FC<CategorySectionProps> = ({
             {items.length} item{items.length !== 1 ? 's' : ''}
           </Text>
         </View>
-        <View style={[styles.categorySearchContainer, { backgroundColor: designColors.surfaceVariant, borderColor: designColors.textSecondary }]}>
+        <View style={[
+          styles.categorySearchContainer, 
+          { backgroundColor: designColors.surfaceVariant },
+          { borderWidth: 0, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 2, elevation: 1 }
+        ]}>
           <TextInput
             style={[styles.categorySearchInput, { color: designColors.textPrimary }]}
             placeholder={`Search in ${category}`}
@@ -537,6 +567,7 @@ const CategorySection: React.FC<CategorySectionProps> = ({
         <StockItemRow
           key={item.item_id || item.id}
           item={item}
+          designColors={designColors}
           isQuickAction={quickActionItem?.item_id === item.item_id}
           quickQuantity={quickQuantity}
           quickUnitType={quickUnitType}
@@ -568,6 +599,7 @@ interface StockItemRowProps {
   onQuickStockOut: () => void;
   getImageSource: (item: StockItem) => { uri: string } | null;
   getStockStatus: (item: StockItem) => { color: string; label: string };
+  designColors: DesignColors;
 }
 
 const StockItemRow: React.FC<StockItemRowProps> = ({
@@ -583,6 +615,7 @@ const StockItemRow: React.FC<StockItemRowProps> = ({
   onQuickStockOut,
   getImageSource,
   getStockStatus,
+  designColors,
 }) => {
   const status = getStockStatus(item);
   const imageSource = getImageSource(item);
@@ -645,13 +678,13 @@ const StockItemRow: React.FC<StockItemRowProps> = ({
               <TouchableOpacity
                 style={[
                   styles.unitTypeChip,
-                  quickUnitType === 'base' && styles.unitTypeChipSelected,
+                  { backgroundColor: quickUnitType === 'base' ? designColors.primaryRed + '30' : designColors.surfaceVariant, borderColor: quickUnitType === 'base' ? designColors.primaryRed : designColors.borderLight },
                 ]}
                 onPress={() => onQuickUnitTypeChange('base')}
               >
                 <Text style={[
                   styles.unitTypeChipText,
-                  quickUnitType === 'base' && styles.unitTypeChipTextSelected,
+                  { color: quickUnitType === 'base' ? designColors.textPrimary : designColors.textSecondary },
                 ]}>
                   {item.items?.base_unit || 'piece'}
                 </Text>
@@ -659,13 +692,13 @@ const StockItemRow: React.FC<StockItemRowProps> = ({
               <TouchableOpacity
                 style={[
                   styles.unitTypeChip,
-                  quickUnitType === 'packaging' && styles.unitTypeChipSelected,
+                  { backgroundColor: quickUnitType === 'packaging' ? designColors.primaryRed + '30' : designColors.surfaceVariant, borderColor: quickUnitType === 'packaging' ? designColors.primaryRed : designColors.borderLight },
                 ]}
                 onPress={() => onQuickUnitTypeChange('packaging')}
               >
                 <Text style={[
                   styles.unitTypeChipText,
-                  quickUnitType === 'packaging' && styles.unitTypeChipTextSelected,
+                  { color: quickUnitType === 'packaging' ? designColors.textPrimary : designColors.textSecondary },
                 ]}>
                   {item.items?.packaging_unit}
                 </Text>
@@ -676,7 +709,11 @@ const StockItemRow: React.FC<StockItemRowProps> = ({
           {/* Qty input, Remove button, Cancel button */}
           <View style={styles.quickActionControls}>
             <TextInput
-              style={[styles.quickQuantityInput, { backgroundColor: designColors.surfaceVariant, color: designColors.textPrimary, borderColor: designColors.textSecondary }]}
+              style={[
+                styles.quickQuantityInput, 
+                { backgroundColor: designColors.surfaceVariant, color: designColors.textPrimary },
+                { borderWidth: 0, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 2, elevation: 1 }
+              ]}
               value={quickQuantity}
               onChangeText={onQuickQuantityChange}
               placeholder="Qty"
@@ -685,14 +722,14 @@ const StockItemRow: React.FC<StockItemRowProps> = ({
               editable={!isLoading}
             />
             <TouchableOpacity
-              style={[styles.quickRemoveButton, { backgroundColor: designColors.surfaceVariant }]}
+              style={[styles.quickRemoveButton, { backgroundColor: designColors.primaryRed }]}
               onPress={onQuickStockOut}
               disabled={isLoading}
             >
               {isLoading ? (
-                <ActivityIndicator size="small" color={designColors.textSecondary} />
+                <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text style={[styles.removeButtonText, { color: designColors.textSecondary }]}>Remove</Text>
+                <Text style={[styles.removeButtonText, { color: '#FFFFFF' }]}>Remove</Text>
               )}
             </TouchableOpacity>
             <TouchableOpacity
@@ -725,6 +762,8 @@ interface RemoveStockDialogProps {
   onDismiss: () => void;
   onConfirm: () => void;
   getImageSource: (item: StockItem) => { uri: string } | null;
+  designColors: DesignColors;
+  isDark: boolean;
 }
 
 const RemoveStockDialog: React.FC<RemoveStockDialogProps> = ({
@@ -742,6 +781,8 @@ const RemoveStockDialog: React.FC<RemoveStockDialogProps> = ({
   onDismiss,
   onConfirm,
   getImageSource,
+  designColors,
+  isDark,
 }) => {
   const [dropdownExpanded, setDropdownExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -771,7 +812,7 @@ const RemoveStockDialog: React.FC<RemoveStockDialogProps> = ({
 
           {/* Item Selector */}
           <TouchableOpacity
-            style={[styles.dropdownTrigger, { backgroundColor: designColors.surfaceVariant, borderColor: designColors.textSecondary }]}
+            style={[styles.dropdownTrigger, { backgroundColor: designColors.surfaceVariant }, isDark ? { borderColor: designColors.textSecondary, borderWidth: 1 } : { borderWidth: 0, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 2, elevation: 1 }]}
             onPress={() => setDropdownExpanded(!dropdownExpanded)}
           >
             <Text style={[styles.dropdownTriggerText, { color: selectedItem ? designColors.textPrimary : designColors.textSecondary }]}>
@@ -783,7 +824,7 @@ const RemoveStockDialog: React.FC<RemoveStockDialogProps> = ({
           {dropdownExpanded && (
             <View style={[styles.dropdownMenu, { backgroundColor: designColors.surfaceVariant }]}>
               <TextInput
-                style={[styles.dropdownSearch, { backgroundColor: designColors.cardDark, color: designColors.textPrimary, borderColor: designColors.textSecondary }]}
+                style={[styles.dropdownSearch, { backgroundColor: designColors.cardDark, color: designColors.textPrimary }, isDark ? { borderColor: designColors.textSecondary, borderWidth: 1 } : { borderWidth: 0, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 2, elevation: 1 }]}
                 placeholder="Search..."
                 placeholderTextColor={designColors.textSecondary}
                 value={searchQuery}
@@ -856,7 +897,7 @@ const RemoveStockDialog: React.FC<RemoveStockDialogProps> = ({
               <View style={styles.dialogSection}>
                 <Text style={[styles.dialogLabel, { color: designColors.textSecondary }]}>Quantity to Remove</Text>
                 <TextInput
-                  style={[styles.dialogInput, { backgroundColor: designColors.surfaceVariant, color: designColors.textPrimary, borderColor: designColors.textSecondary }]}
+                  style={[styles.dialogInput, { backgroundColor: designColors.surfaceVariant, color: designColors.textPrimary }, isDark ? { borderColor: designColors.textSecondary, borderWidth: 1 } : { borderWidth: 0, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 2, elevation: 1 }]}
                   value={quantity}
                   onChangeText={onQuantityChange}
                   keyboardType="numeric"
@@ -878,7 +919,11 @@ const RemoveStockDialog: React.FC<RemoveStockDialogProps> = ({
               <View style={styles.dialogSection}>
                 <Text style={[styles.dialogLabel, { color: designColors.textSecondary }]}>Reason (Optional)</Text>
                 <TextInput
-                  style={[styles.dialogInputMultiline, { backgroundColor: designColors.surfaceVariant, color: designColors.textPrimary, borderColor: designColors.textSecondary }]}
+                  style={[
+                    styles.dialogInputMultiline, 
+                    { backgroundColor: designColors.surfaceVariant, color: designColors.textPrimary },
+                    { borderWidth: 0, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 2, elevation: 1 }
+                  ]}
                   value={reason}
                   onChangeText={onReasonChange}
                   placeholder="Enter reason"
@@ -955,7 +1000,7 @@ const styles = StyleSheet.create({
   removeStockButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FF0000',
+    backgroundColor: '#E6002A',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
@@ -1116,6 +1161,8 @@ const styles = StyleSheet.create({
   quickActionExpandedRow: {
     marginTop: 12,
     paddingTop: 12,
+    paddingHorizontal: 12,
+    paddingBottom: 12,
     borderTopWidth: 1,
     borderTopColor: '#3D3D3D',
   },

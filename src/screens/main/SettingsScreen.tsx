@@ -19,14 +19,16 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 
 import apiClient from '../../api/ApiClient';
 import { useAuthStore } from '../../stores/authStore';
+import { useTheme } from '../../theme/ThemeContext';
+import { DesignColors } from '../../theme/colors';
 
 // Helper to show toast - uses the global Toast from App.tsx
 const showToast = (type: 'success' | 'error' | 'info', text1: string, text2?: string) => {
   Toast.show({ type, text1, text2, position: 'bottom', visibilityTime: 3000 });
 };
 
-// Design colors matching Kotlin app
-const designColors = {
+// Static design colors for sub-components that can't use hooks
+const staticDesignColors = {
   backgroundDark: '#121212',
   surfaceDark: '#1E1E1E',
   cardDark: '#252525',
@@ -67,6 +69,7 @@ const ScheduleDetails = ({
   monthlyDate?: number;
   monthlyTime?: string;
 }) => {
+  const { designColors } = useTheme();
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   
   const getOrdinalSuffix = (num: number): string => {
@@ -79,21 +82,21 @@ const ScheduleDetails = ({
   };
 
   if (!frequencies || frequencies.length === 0) {
-    return <Text style={styles.scheduleDetailText}>Not configured</Text>;
+    return <Text style={[styles.scheduleDetailText, { color: designColors.textSecondary }]}>Not configured</Text>;
   }
 
   return (
     <View>
       {frequencies.includes('daily') && (
-        <Text style={styles.scheduleDetailText}>Daily: {dailyTime || 'Not set'}</Text>
+        <Text style={[styles.scheduleDetailText, { color: designColors.textSecondary }]}>Daily: {dailyTime || 'Not set'}</Text>
       )}
       {frequencies.includes('weekly') && (
-        <Text style={styles.scheduleDetailText}>
+        <Text style={[styles.scheduleDetailText, { color: designColors.textSecondary }]}>
           Weekly: {dayNames[weeklyDay || 0]} at {weeklyTime || 'Not set'}
         </Text>
       )}
       {frequencies.includes('monthly') && (
-        <Text style={styles.scheduleDetailText}>
+        <Text style={[styles.scheduleDetailText, { color: designColors.textSecondary }]}>
           Monthly: {monthlyDate || 0}{getOrdinalSuffix(monthlyDate || 0)} at {monthlyTime || 'Not set'}
         </Text>
       )}
@@ -117,6 +120,7 @@ const AlertSchedulingDialog = ({
   description: string;
   initialSchedule?: AlertSchedule;
 }) => {
+  const { designColors } = useTheme();
   const [frequencies, setFrequencies] = useState<string[]>(initialSchedule?.frequencies || []);
   const [dailyTime, setDailyTime] = useState(initialSchedule?.dailyTime || '09:00');
   const [weeklyDay, setWeeklyDay] = useState(initialSchedule?.weeklyDay || 1);
@@ -137,7 +141,7 @@ const AlertSchedulingDialog = ({
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onDismiss}>
       <View style={styles.modalOverlay}>
-        <View style={styles.dialogContainer}>
+        <View style={[styles.dialogContainer, { backgroundColor: designColors.surfaceVariant }]}>
           <Text style={styles.dialogTitle}>{title}</Text>
           <Text style={styles.dialogDescription}>{description}</Text>
 
@@ -153,7 +157,7 @@ const AlertSchedulingDialog = ({
                 <Icon
                   name={frequencies.includes(freq) ? 'check-box' : 'check-box-outline-blank'}
                   size={24}
-                  color={frequencies.includes(freq) ? designColors.primaryRed : designColors.textSecondary}
+                  color={frequencies.includes(freq) ? staticDesignColors.primaryRed : staticDesignColors.textSecondary}
                 />
                 <Text style={styles.frequencyLabel}>{freq.charAt(0).toUpperCase() + freq.slice(1)}</Text>
               </TouchableOpacity>
@@ -168,7 +172,7 @@ const AlertSchedulingDialog = ({
                   value={dailyTime}
                   onChangeText={setDailyTime}
                   placeholder="HH:MM"
-                  placeholderTextColor={designColors.textSecondary}
+                  placeholderTextColor={staticDesignColors.textSecondary}
                 />
               </View>
             )}
@@ -183,7 +187,7 @@ const AlertSchedulingDialog = ({
                       key={day}
                       style={[
                         styles.dayButton,
-                        weeklyDay === index && { backgroundColor: designColors.primaryRed },
+                        weeklyDay === index && { backgroundColor: staticDesignColors.primaryRed },
                       ]}
                       onPress={() => setWeeklyDay(index)}
                     >
@@ -203,7 +207,7 @@ const AlertSchedulingDialog = ({
                   value={weeklyTime}
                   onChangeText={setWeeklyTime}
                   placeholder="HH:MM"
-                  placeholderTextColor={designColors.textSecondary}
+                  placeholderTextColor={staticDesignColors.textSecondary}
                 />
               </View>
             )}
@@ -219,7 +223,7 @@ const AlertSchedulingDialog = ({
                     value={monthlyDate.toString()}
                     onChangeText={(text) => setMonthlyDate(parseInt(text) || 1)}
                     keyboardType="number-pad"
-                    placeholderTextColor={designColors.textSecondary}
+                    placeholderTextColor={staticDesignColors.textSecondary}
                   />
                 </View>
                 <TextInput
@@ -227,7 +231,7 @@ const AlertSchedulingDialog = ({
                   value={monthlyTime}
                   onChangeText={setMonthlyTime}
                   placeholder="HH:MM"
-                  placeholderTextColor={designColors.textSecondary}
+                  placeholderTextColor={staticDesignColors.textSecondary}
                 />
               </View>
             )}
@@ -262,6 +266,7 @@ const AlertSchedulingDialog = ({
 
 const SettingsScreen: React.FC = () => {
   const { profile, signOut, updateProfile } = useAuthStore();
+  const { colors: themeColors, isDark, designColors } = useTheme();
   
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -605,7 +610,7 @@ const SettingsScreen: React.FC = () => {
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={[styles.loadingContainer, { backgroundColor: designColors.background }]}>
         <ActivityIndicator size="large" color={designColors.primaryRed} />
       </View>
     );
@@ -613,7 +618,7 @@ const SettingsScreen: React.FC = () => {
 
   return (
     <ScrollView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: designColors.background }]}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
@@ -623,13 +628,13 @@ const SettingsScreen: React.FC = () => {
       }
     >
       {/* Page Title */}
-      <Text style={styles.pageTitle}>Settings</Text>
+      <Text style={[styles.pageTitle, { color: designColors.textPrimary }]}>Settings</Text>
 
       {/* Profile Settings Section */}
-      <View style={styles.card}>
+      <View style={[styles.card, { backgroundColor: designColors.cardBackground, shadowColor: designColors.shadowColor, shadowOpacity: designColors.shadowOpacity, shadowRadius: designColors.shadowRadius, shadowOffset: designColors.shadowOffset, elevation: designColors.elevation }]}>
         <View style={styles.sectionHeader}>
           <Icon name="person" size={20} color={designColors.textPrimary} />
-          <Text style={styles.sectionTitle}>Profile Settings</Text>
+          <Text style={[styles.sectionTitle, { color: designColors.textPrimary }]}>Profile Settings</Text>
         </View>
 
         {/* Profile Picture */}
@@ -640,7 +645,7 @@ const SettingsScreen: React.FC = () => {
             <Image source={{ uri: currentUser.photoUrl }} style={styles.profilePicture} />
           ) : (
             <View style={styles.profilePicturePlaceholder}>
-              <Text style={styles.profileInitials}>{getInitials(currentUser?.name || 'U')}</Text>
+              <Text style={[styles.profileInitials, { color: designColors.textSecondary }]}>{getInitials(currentUser?.name || 'U')}</Text>
             </View>
           )}
           <View style={styles.editOverlay}>
@@ -655,9 +660,9 @@ const SettingsScreen: React.FC = () => {
 
         {/* Profile Fields */}
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Name</Text>
+          <Text style={[styles.inputLabel, { color: designColors.textSecondary }]}>Name</Text>
           <TextInput
-            style={styles.textInput}
+            style={[styles.textInput, { backgroundColor: designColors.surfaceVariant, borderColor: designColors.borderLight, color: designColors.textPrimary }]}
             value={name}
             onChangeText={setName}
             maxLength={100}
@@ -666,18 +671,18 @@ const SettingsScreen: React.FC = () => {
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Email</Text>
+          <Text style={[styles.inputLabel, { color: designColors.textSecondary }]}>Email</Text>
           <TextInput
-            style={[styles.textInput, styles.disabledInput]}
+            style={[styles.textInput, styles.disabledInput, { backgroundColor: designColors.surfaceVariant, borderColor: designColors.borderLight, color: designColors.textPrimary }]}
             value={currentUser?.email || ''}
             editable={false}
           />
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Phone Number</Text>
+          <Text style={[styles.inputLabel, { color: designColors.textSecondary }]}>Phone Number</Text>
           <TextInput
-            style={styles.textInput}
+            style={[styles.textInput, { backgroundColor: designColors.surfaceVariant, borderColor: designColors.borderLight, color: designColors.textPrimary }]}
             value={phone}
             onChangeText={setPhone}
             maxLength={30}
@@ -687,9 +692,9 @@ const SettingsScreen: React.FC = () => {
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Position</Text>
+          <Text style={[styles.inputLabel, { color: designColors.textSecondary }]}>Position</Text>
           <TextInput
-            style={styles.textInput}
+            style={[styles.textInput, { backgroundColor: designColors.surfaceVariant, borderColor: designColors.borderLight, color: designColors.textPrimary }]}
             value={position}
             onChangeText={setPosition}
             maxLength={100}
@@ -698,9 +703,9 @@ const SettingsScreen: React.FC = () => {
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Role</Text>
+          <Text style={[styles.inputLabel, { color: designColors.textSecondary }]}>Role</Text>
           <TextInput
-            style={[styles.textInput, styles.disabledInput]}
+            style={[styles.textInput, styles.disabledInput, { backgroundColor: designColors.surfaceVariant, borderColor: designColors.borderLight, color: designColors.textPrimary }]}
             value={currentUser?.role || ''}
             editable={false}
           />
@@ -721,19 +726,19 @@ const SettingsScreen: React.FC = () => {
 
       {/* Notification Preferences (hide for staff) */}
       {!isStaff && (
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: designColors.cardBackground, ...(isDark ? {} : { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }) }]}>
           <View style={styles.sectionHeader}>
             <Icon name="notifications" size={20} color={designColors.textPrimary} />
-            <Text style={styles.sectionTitle}>Notification Preferences</Text>
+            <Text style={[styles.sectionTitle, { color: designColors.textPrimary }]}>Notification Preferences</Text>
           </View>
 
-          <Text style={styles.subsectionTitle}>Alert Types</Text>
+          <Text style={[styles.subsectionTitle, { color: designColors.textPrimary }]}>Alert Types</Text>
 
           {/* Stock Level Alerts */}
           <View style={styles.switchRow}>
             <View style={styles.switchLabelContainer}>
-              <Text style={styles.switchLabel}>Stock Level Alerts</Text>
-              <Text style={styles.switchDescription}>Get notified about low stock levels</Text>
+              <Text style={[styles.switchLabel, { color: designColors.textPrimary }]}>Stock Level Alerts</Text>
+              <Text style={[styles.switchDescription, { color: designColors.textSecondary }]}>Get notified about low stock levels</Text>
             </View>
             <Switch
               value={stockAlerts}
@@ -745,7 +750,7 @@ const SettingsScreen: React.FC = () => {
                   saveNotificationPreferences({ stockLevelAlerts: false });
                 }
               }}
-              trackColor={{ false: designColors.cardDark, true: designColors.primaryRed + '50' }}
+              trackColor={{ false: designColors.surface, true: designColors.primaryRed + '50' }}
               thumbColor={stockAlerts ? designColors.primaryRed : designColors.textSecondary}
             />
           </View>
@@ -753,8 +758,8 @@ const SettingsScreen: React.FC = () => {
           {/* Event Reminders */}
           <View style={styles.switchRow}>
             <View style={styles.switchLabelContainer}>
-              <Text style={styles.switchLabel}>Event Reminders</Text>
-              <Text style={styles.switchDescription}>Receive reminders for upcoming events</Text>
+              <Text style={[styles.switchLabel, { color: designColors.textPrimary }]}>Event Reminders</Text>
+              <Text style={[styles.switchDescription, { color: designColors.textSecondary }]}>Receive reminders for upcoming events</Text>
             </View>
             <Switch
               value={eventReminders}
@@ -766,7 +771,7 @@ const SettingsScreen: React.FC = () => {
                   saveNotificationPreferences({ eventReminders: false });
                 }
               }}
-              trackColor={{ false: designColors.cardDark, true: designColors.primaryRed + '50' }}
+              trackColor={{ false: designColors.surface, true: designColors.primaryRed + '50' }}
               thumbColor={eventReminders ? designColors.primaryRed : designColors.textSecondary}
             />
           </View>
@@ -774,8 +779,8 @@ const SettingsScreen: React.FC = () => {
           {/* Softdrink Trends */}
           <View style={styles.switchRow}>
             <View style={styles.switchLabelContainer}>
-              <Text style={styles.switchLabel}>Softdrink Trends</Text>
-              <Text style={styles.switchDescription}>Get updates on softdrink consumption trends</Text>
+              <Text style={[styles.switchLabel, { color: designColors.textPrimary }]}>Softdrink Trends</Text>
+              <Text style={[styles.switchDescription, { color: designColors.textSecondary }]}>Get updates on softdrink consumption trends</Text>
             </View>
             <Switch
               value={softdrinkTrends}
@@ -787,20 +792,20 @@ const SettingsScreen: React.FC = () => {
                   saveNotificationPreferences({ softdrinkTrends: false });
                 }
               }}
-              trackColor={{ false: designColors.cardDark, true: designColors.primaryRed + '50' }}
+              trackColor={{ false: designColors.surface, true: designColors.primaryRed + '50' }}
               thumbColor={softdrinkTrends ? designColors.primaryRed : designColors.textSecondary}
             />
           </View>
 
           <View style={styles.divider} />
 
-          <Text style={styles.subsectionTitle}>Notification Channels</Text>
+          <Text style={[styles.subsectionTitle, { color: designColors.textPrimary }]}>Notification Channels</Text>
 
           {/* Email Notifications */}
           <View style={styles.switchRow}>
             <View style={styles.channelRow}>
               <Icon name="email" size={20} color={designColors.textPrimary} />
-              <Text style={styles.switchLabel}>Email Notifications</Text>
+              <Text style={[styles.switchLabel, { color: designColors.textPrimary }]}>Email Notifications</Text>
             </View>
             <Switch
               value={emailNotifications}
@@ -808,7 +813,7 @@ const SettingsScreen: React.FC = () => {
                 setEmailNotifications(value);
                 saveNotificationPreferences({ email: value });
               }}
-              trackColor={{ false: designColors.cardDark, true: designColors.primaryRed + '50' }}
+              trackColor={{ false: designColors.surface, true: designColors.primaryRed + '50' }}
               thumbColor={emailNotifications ? designColors.primaryRed : designColors.textSecondary}
             />
           </View>
@@ -817,7 +822,7 @@ const SettingsScreen: React.FC = () => {
           <View style={styles.switchRow}>
             <View style={styles.channelRow}>
               <Icon name="sms" size={20} color={designColors.textPrimary} />
-              <Text style={styles.switchLabel}>SMS Notifications</Text>
+              <Text style={[styles.switchLabel, { color: designColors.textPrimary }]}>SMS Notifications</Text>
             </View>
             <Switch
               value={smsNotifications}
@@ -825,7 +830,7 @@ const SettingsScreen: React.FC = () => {
                 setSmsNotifications(value);
                 saveNotificationPreferences({ sms: value });
               }}
-              trackColor={{ false: designColors.cardDark, true: designColors.primaryRed + '50' }}
+              trackColor={{ false: designColors.surface, true: designColors.primaryRed + '50' }}
               thumbColor={smsNotifications ? designColors.primaryRed : designColors.textSecondary}
             />
           </View>
@@ -834,7 +839,7 @@ const SettingsScreen: React.FC = () => {
           <View style={styles.switchRow}>
             <View style={styles.channelRow}>
               <Icon name="chat" size={20} color={designColors.textPrimary} />
-              <Text style={styles.switchLabel}>WhatsApp Notifications</Text>
+              <Text style={[styles.switchLabel, { color: designColors.textPrimary }]}>WhatsApp Notifications</Text>
             </View>
             <Switch
               value={whatsappNotifications}
@@ -846,7 +851,7 @@ const SettingsScreen: React.FC = () => {
                 setWhatsappNotifications(value);
                 saveNotificationPreferences({ whatsapp: value });
               }}
-              trackColor={{ false: designColors.cardDark, true: designColors.primaryRed + '50' }}
+              trackColor={{ false: designColors.surface, true: designColors.primaryRed + '50' }}
               thumbColor={whatsappNotifications ? designColors.primaryRed : designColors.textSecondary}
             />
           </View>
@@ -854,11 +859,11 @@ const SettingsScreen: React.FC = () => {
           <View style={styles.divider} />
 
           {/* Current Alert Schedule Section */}
-          <Text style={styles.subsectionTitle}>Current Alert Schedule</Text>
+          <Text style={[styles.subsectionTitle, { color: designColors.textPrimary }]}>Current Alert Schedule</Text>
 
           {stockAlerts && (
             <View style={styles.scheduleCard}>
-              <Text style={styles.scheduleTitle}>Stock Level Alerts</Text>
+              <Text style={[styles.scheduleTitle, { color: designColors.textPrimary }]}>Stock Level Alerts</Text>
               <ScheduleDetails
                 frequencies={currentUser?.stockAlertFrequencies}
                 dailyTime={currentUser?.dailyScheduleTime}
@@ -872,7 +877,7 @@ const SettingsScreen: React.FC = () => {
 
           {eventReminders && (
             <View style={styles.scheduleCard}>
-              <Text style={styles.scheduleTitle}>Event Reminders</Text>
+              <Text style={[styles.scheduleTitle, { color: designColors.textPrimary }]}>Event Reminders</Text>
               <ScheduleDetails
                 frequencies={currentUser?.eventReminderFrequencies}
                 dailyTime={currentUser?.eventDailyScheduleTime}
@@ -886,7 +891,7 @@ const SettingsScreen: React.FC = () => {
 
           {softdrinkTrends && (
             <View style={styles.scheduleCard}>
-              <Text style={styles.scheduleTitle}>Softdrink Trends</Text>
+              <Text style={[styles.scheduleTitle, { color: designColors.textPrimary }]}>Softdrink Trends</Text>
               <ScheduleDetails
                 frequencies={currentUser?.softdrinkTrendsFrequencies}
                 dailyTime={currentUser?.softdrinkTrendsDailyScheduleTime}
@@ -902,21 +907,21 @@ const SettingsScreen: React.FC = () => {
 
       {/* Permissions Management (managers only) */}
       {isManager && (
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: designColors.cardBackground, ...(isDark ? {} : { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }) }]}>
           <View style={styles.sectionHeader}>
             <Icon name="security" size={20} color={designColors.textPrimary} />
-            <Text style={styles.sectionTitle}>Permissions Management</Text>
+            <Text style={[styles.sectionTitle, { color: designColors.textPrimary }]}>Permissions Management</Text>
           </View>
 
           <View style={styles.switchRow}>
             <View style={styles.switchLabelContainer}>
-              <Text style={styles.switchLabel}>Assistant Manager Stock In Access</Text>
-              <Text style={styles.switchDescription}>Allow Assistant Managers to access{'\n'}the Stock In page</Text>
+              <Text style={[styles.switchLabel, { color: designColors.textPrimary }]}>Assistant Manager Stock In Access</Text>
+              <Text style={[styles.switchDescription, { color: designColors.textSecondary }]}>Allow Assistant Managers to access{'\n'}the Stock In page</Text>
             </View>
             <Switch
               value={assistantManagerStockInAccess}
               onValueChange={setAssistantManagerStockInAccess}
-              trackColor={{ false: designColors.cardDark, true: designColors.primaryRed + '50' }}
+              trackColor={{ false: designColors.surface, true: designColors.primaryRed + '50' }}
               thumbColor={assistantManagerStockInAccess ? designColors.primaryRed : designColors.textSecondary}
             />
           </View>
@@ -937,25 +942,25 @@ const SettingsScreen: React.FC = () => {
 
       {/* Branch Settings (for managers and assistant managers) */}
       {isManagerOrAssistant && (
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: designColors.cardBackground, ...(isDark ? {} : { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }) }]}>
           <View style={styles.sectionHeader}>
             <Icon name="store" size={20} color={designColors.textPrimary} />
-            <Text style={styles.sectionTitle}>Branch Settings</Text>
+            <Text style={[styles.sectionTitle, { color: designColors.textPrimary }]}>Branch Settings</Text>
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Branch Name</Text>
+            <Text style={[styles.inputLabel, { color: designColors.textSecondary }]}>Branch Name</Text>
             <TextInput
-              style={[styles.textInput, styles.disabledInput]}
+              style={[styles.textInput, styles.disabledInput, { backgroundColor: designColors.surfaceVariant, borderColor: designColors.borderLight, color: designColors.textPrimary }]}
               value={currentUser?.branchName || 'N/A'}
               editable={false}
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Branch Location</Text>
+            <Text style={[styles.inputLabel, { color: designColors.textSecondary }]}>Branch Location</Text>
             <TextInput
-              style={[styles.textInput, styles.disabledInput]}
+              style={[styles.textInput, styles.disabledInput, { backgroundColor: designColors.surfaceVariant, borderColor: designColors.borderLight, color: designColors.textPrimary }]}
               value={
                 currentUser?.branchLocation ||
                 [currentUser?.branchName, currentUser?.districtName, currentUser?.regionName]
@@ -970,34 +975,34 @@ const SettingsScreen: React.FC = () => {
       )}
 
       {/* System Information */}
-      <View style={styles.card}>
+      <View style={[styles.card, { backgroundColor: designColors.cardBackground, ...(isDark ? {} : { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }) }]}>
         <View style={styles.sectionHeader}>
           <Icon name="info" size={20} color={designColors.textPrimary} />
-          <Text style={styles.sectionTitle}>System Information</Text>
+          <Text style={[styles.sectionTitle, { color: designColors.textPrimary }]}>System Information</Text>
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Account Created</Text>
+          <Text style={[styles.inputLabel, { color: designColors.textSecondary }]}>Account Created</Text>
           <TextInput
-            style={[styles.textInput, styles.disabledInput]}
+            style={[styles.textInput, styles.disabledInput, { backgroundColor: designColors.surfaceVariant, borderColor: designColors.borderLight, color: designColors.textPrimary }]}
             value={formatTimestamp(currentUser?.createdAt || '')}
             editable={false}
           />
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Last Updated</Text>
+          <Text style={[styles.inputLabel, { color: designColors.textSecondary }]}>Last Updated</Text>
           <TextInput
-            style={[styles.textInput, styles.disabledInput]}
+            style={[styles.textInput, styles.disabledInput, { backgroundColor: designColors.surfaceVariant, borderColor: designColors.borderLight, color: designColors.textPrimary }]}
             value={formatTimestamp(currentUser?.updatedAt || '')}
             editable={false}
           />
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Login Count</Text>
+          <Text style={[styles.inputLabel, { color: designColors.textSecondary }]}>Login Count</Text>
           <TextInput
-            style={[styles.textInput, styles.disabledInput]}
+            style={[styles.textInput, styles.disabledInput, { backgroundColor: designColors.surfaceVariant, borderColor: designColors.borderLight, color: designColors.textPrimary }]}
             value={`${currentUser?.accessCount || 0}`}
             editable={false}
           />
@@ -1005,8 +1010,8 @@ const SettingsScreen: React.FC = () => {
       </View>
 
       {/* Logout Button */}
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Icon name="logout" size={20} color={designColors.dangerRed} />
+      <TouchableOpacity style={[styles.logoutButton, { backgroundColor: designColors.cardBackground, borderColor: staticDesignColors.dangerRed + '50', ...(isDark ? {} : { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }) }]} onPress={handleLogout}>
+        <Icon name="logout" size={20} color={staticDesignColors.dangerRed} />
         <Text style={styles.logoutButtonText}>Logout</Text>
       </TouchableOpacity>
 
@@ -1077,23 +1082,23 @@ const SettingsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: designColors.backgroundDark,
+    backgroundColor: staticDesignColors.backgroundDark,
     padding: 16,
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: designColors.backgroundDark,
+    backgroundColor: staticDesignColors.backgroundDark,
     justifyContent: 'center',
     alignItems: 'center',
   },
   pageTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     marginBottom: 16,
   },
   card: {
-    backgroundColor: designColors.surfaceDark,
+    backgroundColor: staticDesignColors.surfaceDark,
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -1107,12 +1112,10 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
   },
   subsectionTitle: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
     marginBottom: 12,
     marginTop: 8,
   },
@@ -1130,14 +1133,13 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: designColors.cardDark,
+    backgroundColor: staticDesignColors.cardDark,
     justifyContent: 'center',
     alignItems: 'center',
   },
   profileInitials: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: designColors.textSecondary,
   },
   editOverlay: {
     position: 'absolute',
@@ -1154,7 +1156,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: -5,
     right: -5,
-    backgroundColor: designColors.primaryRed,
+    backgroundColor: staticDesignColors.primaryRed,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 10,
@@ -1169,24 +1171,23 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: 12,
-    color: designColors.textSecondary,
     marginBottom: 6,
   },
   textInput: {
-    backgroundColor: designColors.cardDark,
+    backgroundColor: staticDesignColors.cardDark,
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 14,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     borderWidth: 1,
-    borderColor: designColors.borderLight,
+    borderColor: staticDesignColors.borderLight,
   },
   disabledInput: {
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
   },
   primaryButton: {
-    backgroundColor: designColors.primaryRed,
+    backgroundColor: staticDesignColors.primaryRed,
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: 'center',
@@ -1212,11 +1213,9 @@ const styles = StyleSheet.create({
   },
   switchLabel: {
     fontSize: 14,
-    color: designColors.textPrimary,
   },
   switchDescription: {
     fontSize: 12,
-    color: designColors.textSecondary,
     marginTop: 2,
   },
   channelRow: {
@@ -1226,11 +1225,11 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: designColors.divider,
+    backgroundColor: staticDesignColors.divider,
     marginVertical: 16,
   },
   scheduleCard: {
-    backgroundColor: designColors.cardDark,
+    backgroundColor: staticDesignColors.cardDark,
     borderRadius: 8,
     padding: 12,
     marginBottom: 8,
@@ -1238,12 +1237,10 @@ const styles = StyleSheet.create({
   scheduleTitle: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
     marginBottom: 4,
   },
   scheduleDetailText: {
     fontSize: 12,
-    color: designColors.textSecondary,
     marginTop: 2,
   },
   logoutButton: {
@@ -1251,16 +1248,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: designColors.surfaceDark,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: designColors.dangerRed + '50',
   },
   logoutButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: designColors.dangerRed,
+    color: staticDesignColors.dangerRed,
   },
   modalOverlay: {
     flex: 1,
@@ -1270,7 +1265,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   dialogContainer: {
-    backgroundColor: designColors.surfaceDark,
+    backgroundColor: staticDesignColors.surfaceDark,
     borderRadius: 12,
     padding: 20,
     width: '100%',
@@ -1279,20 +1274,19 @@ const styles = StyleSheet.create({
   dialogTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     textAlign: 'center',
     marginBottom: 8,
   },
   dialogDescription: {
     fontSize: 14,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
     textAlign: 'center',
     marginBottom: 20,
   },
   dialogSectionTitle: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
     marginBottom: 12,
   },
   frequencyOption: {
@@ -1303,36 +1297,34 @@ const styles = StyleSheet.create({
   },
   frequencyLabel: {
     fontSize: 14,
-    color: designColors.textPrimary,
   },
   settingSection: {
     marginTop: 16,
   },
   settingLabel: {
     fontSize: 12,
-    color: designColors.textSecondary,
     marginBottom: 8,
   },
   timeInput: {
-    backgroundColor: designColors.cardDark,
+    backgroundColor: staticDesignColors.cardDark,
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 14,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     borderWidth: 1,
-    borderColor: designColors.borderLight,
+    borderColor: staticDesignColors.borderLight,
   },
   dayButton: {
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 6,
-    backgroundColor: designColors.cardDark,
+    backgroundColor: staticDesignColors.cardDark,
     marginRight: 8,
   },
   dayButtonText: {
     fontSize: 12,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
   },
   monthlyRow: {
     flexDirection: 'row',
@@ -1348,18 +1340,17 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderRadius: 8,
-    backgroundColor: designColors.cardDark,
+    backgroundColor: staticDesignColors.cardDark,
     alignItems: 'center',
   },
   cancelButtonText: {
     fontSize: 14,
-    color: designColors.textPrimary,
   },
   saveButton: {
     flex: 1,
     paddingVertical: 12,
     borderRadius: 8,
-    backgroundColor: designColors.primaryRed,
+    backgroundColor: staticDesignColors.primaryRed,
     alignItems: 'center',
   },
   saveButtonText: {

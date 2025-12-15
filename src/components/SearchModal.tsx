@@ -38,7 +38,7 @@ interface SearchModalProps {
 }
 
 const SearchModal: React.FC<SearchModalProps> = ({ visible, onClose }) => {
-  const { isDark } = useTheme();
+  const { isDark, designColors } = useTheme();
   const { profile } = useAuthStore();
   const [query, setQuery] = useState('');
   const [allItems, setAllItems] = useState<SearchResultItem[]>([]);
@@ -154,14 +154,14 @@ const SearchModal: React.FC<SearchModalProps> = ({ visible, onClose }) => {
     const status = getStockStatus(item);
     return (
       <TouchableOpacity
-        style={styles.resultCard}
+        style={[styles.resultCard, { backgroundColor: designColors.surfaceVariant }]}
         onPress={() => setSelectedItem(item)}
         activeOpacity={0.7}
       >
         {renderItemImage(item.imageUrl, 64)}
         <View style={styles.resultInfo}>
-          <Text style={styles.resultName} numberOfLines={1}>{item.name}</Text>
-          <Text style={styles.resultCategory}>
+          <Text style={[styles.resultName, { color: designColors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
+          <Text style={[styles.resultCategory, { color: designColors.textSecondary }]}>
             {item.category.charAt(0).toUpperCase() + item.category.slice(1)}
           </Text>
           <View style={styles.statusRow}>
@@ -169,7 +169,7 @@ const SearchModal: React.FC<SearchModalProps> = ({ visible, onClose }) => {
             <View style={[styles.statusBadge, { backgroundColor: status.color }]}>
               <Text style={styles.statusText}>{status.label}</Text>
             </View>
-            <Text style={styles.unitsText}>{item.currentQuantity} units</Text>
+            <Text style={[styles.unitsText, { color: designColors.textSecondary }]}>{item.currentQuantity} units</Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -195,31 +195,31 @@ const SearchModal: React.FC<SearchModalProps> = ({ visible, onClose }) => {
         showsVerticalScrollIndicator={false}
       >
         {/* Header with back button */}
-        <View style={styles.detailHeader}>
+        <View style={[styles.detailHeader, { backgroundColor: designColors.surfaceVariant, borderBottomColor: designColors.borderLight }]}>
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => setSelectedItem(null)}
           >
-            <Icon name="arrow-back" size={24} color="#fff" />
+            <Icon name="arrow-back" size={24} color={designColors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.detailHeaderTitle}>Item Details</Text>
+          <Text style={[styles.detailHeaderTitle, { color: designColors.textPrimary }]}>Item Details</Text>
         </View>
 
-        <View style={styles.detailContent}>
+        <View style={[styles.detailContent, { backgroundColor: designColors.cardBackground }]}>
           {/* Header with image and basic info - side by side like Kotlin */}
           <View style={styles.itemHeader}>
             {renderItemImage(selectedItem.imageUrl, 80)}
             <View style={styles.itemHeaderInfo}>
-              <Text style={styles.detailName}>{selectedItem.name}</Text>
-              <Text style={styles.detailCategory}>
+              <Text style={[styles.detailName, { color: designColors.textPrimary }]}>{selectedItem.name}</Text>
+              <Text style={[styles.detailCategory, { color: designColors.textSecondary }]}>
                 {selectedItem.category.charAt(0).toUpperCase() + selectedItem.category.slice(1)}
               </Text>
             </View>
           </View>
 
           {/* Stock Information Card */}
-          <View style={styles.stockInfoCard}>
-            <Text style={styles.stockInfoTitle}>Stock Information</Text>
+          <View style={[styles.stockInfoCard, { backgroundColor: designColors.surfaceVariant }]}>
+            <Text style={[styles.stockInfoTitle, { color: designColors.textPrimary }]}>Stock Information</Text>
             
             {/* Current Stock and Threshold row */}
             <View style={styles.stockRow}>
@@ -232,22 +232,22 @@ const SearchModal: React.FC<SearchModalProps> = ({ visible, onClose }) => {
                   {selectedItem.baseUnit || 'units'}
                 </Text>
               </View>
-              <View style={[styles.stockInfoItem, { backgroundColor: 'rgba(255, 255, 255, 0.05)' }]}>
-                <Text style={styles.stockInfoLabel}>Threshold</Text>
-                <Text style={styles.stockInfoValue}>{selectedItem.thresholdLevel}</Text>
+              <View style={[styles.stockInfoItem, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' }]}>
+                <Text style={[styles.stockInfoLabel, { color: designColors.textSecondary }]}>Threshold</Text>
+                <Text style={[styles.stockInfoValue, { color: designColors.textPrimary }]}>{selectedItem.thresholdLevel}</Text>
                 <Text style={styles.stockInfoUnit}></Text>
               </View>
             </View>
 
             {/* Packaging info if enabled */}
             {selectedItem.enablePackaging && selectedItem.packagingUnit && selectedItem.unitsPerPackage && selectedItem.unitsPerPackage > 0 && (
-              <View style={styles.packagingCard}>
-                <Text style={styles.packagingLabel}>Packaging</Text>
-                <Text style={styles.packagingValue}>
+              <View style={[styles.packagingCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' }]}>
+                <Text style={[styles.packagingLabel, { color: designColors.textSecondary }]}>Packaging</Text>
+                <Text style={[styles.packagingValue, { color: designColors.textPrimary }]}>
                   {packages} {selectedItem.packagingUnit || 'packages'}
                 </Text>
                 {remainder > 0 && (
-                  <Text style={styles.packagingRemainder}>
+                  <Text style={[styles.packagingRemainder, { color: designColors.textSecondary }]}>
                     + {remainder} {selectedItem.baseUnit || 'units'}
                   </Text>
                 )}
@@ -278,16 +278,16 @@ const SearchModal: React.FC<SearchModalProps> = ({ visible, onClose }) => {
           </View>
 
           {/* Stock Status Card */}
-          <View style={styles.statusCard}>
+          <View style={[styles.statusCard, { backgroundColor: designColors.surfaceVariant }]}>
             <View style={styles.statusHeader}>
-              <Text style={styles.stockInfoTitle}>Stock Status</Text>
+              <Text style={[styles.stockInfoTitle, { color: designColors.textPrimary }]}>Stock Status</Text>
               <Icon name={status.icon} size={20} color={status.color} />
             </View>
             <View style={styles.statusContent}>
               <View style={[styles.statusBadgeLarge, { backgroundColor: status.color }]}>
                 <Text style={styles.statusBadgeText}>{status.label}</Text>
               </View>
-              <Text style={styles.statusDescription}>
+              <Text style={[styles.statusDescription, { color: designColors.textSecondary }]}>
                 {status.label === 'Critical' 
                   ? 'Stock is critically low. Immediate restocking required!'
                   : status.label === 'Low'
@@ -311,34 +311,34 @@ const SearchModal: React.FC<SearchModalProps> = ({ visible, onClose }) => {
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <View style={styles.dialog}>
+        <View style={[styles.dialog, { backgroundColor: designColors.cardBackground }]}>
           {selectedItem ? (
             renderItemDetail()
           ) : (
             <>
               {/* Header */}
-              <View style={styles.header}>
-                <Text style={styles.title}>Search Inventory</Text>
+              <View style={[styles.header, { borderBottomColor: designColors.borderLight }]}>
+                <Text style={[styles.title, { color: designColors.textPrimary }]}>Search Inventory</Text>
                 <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                  <Icon name="close" size={24} color="#fff" />
+                  <Icon name="close" size={24} color={designColors.textPrimary} />
                 </TouchableOpacity>
               </View>
 
               {/* Search Input */}
               <View style={styles.searchContainer}>
-                <View style={styles.searchInputWrapper}>
-                  <Icon name="search" size={20} color="#666" style={styles.searchIcon} />
+                <View style={[styles.searchInputWrapper, { backgroundColor: designColors.surfaceVariant, borderColor: designColors.borderLight }]}>
+                  <Icon name="search" size={20} color={designColors.textMuted} style={styles.searchIcon} />
                   <TextInput
-                    style={styles.searchInput}
+                    style={[styles.searchInput, { color: designColors.textPrimary }]}
                     placeholder="Search inventory..."
-                    placeholderTextColor="#666"
+                    placeholderTextColor={designColors.textMuted}
                     value={query}
                     onChangeText={setQuery}
                     autoFocus
                   />
                   {query.length > 0 && (
                     <TouchableOpacity onPress={() => setQuery('')} style={styles.clearButton}>
-                      <Icon name="clear" size={20} color="#666" />
+                      <Icon name="clear" size={20} color={designColors.textMuted} />
                     </TouchableOpacity>
                   )}
                 </View>
@@ -348,13 +348,13 @@ const SearchModal: React.FC<SearchModalProps> = ({ visible, onClose }) => {
               <View style={styles.resultsContainer}>
                 {query.length < 2 ? (
                   <View style={styles.centerContainer}>
-                    <Icon name="search" size={64} color="#333" />
-                    <Text style={styles.hintText}>Type at least 2 characters to search</Text>
+                    <Icon name="search" size={64} color={designColors.textMuted} />
+                    <Text style={[styles.hintText, { color: designColors.textSecondary }]}>Type at least 2 characters to search</Text>
                   </View>
                 ) : results.length === 0 ? (
                   <View style={styles.centerContainer}>
-                    <Icon name="search-off" size={64} color="#333" />
-                    <Text style={styles.hintText}>No items found</Text>
+                    <Icon name="search-off" size={64} color={designColors.textMuted} />
+                    <Text style={[styles.hintText, { color: designColors.textSecondary }]}>No items found</Text>
                   </View>
                 ) : (
                   <FlatList
@@ -387,7 +387,6 @@ const styles = StyleSheet.create({
   dialog: {
     width: width * 0.95,
     maxHeight: height * 0.9,
-    backgroundColor: '#1A1A1A',
     borderRadius: 16,
     overflow: 'hidden',
   },
@@ -402,7 +401,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
   },
   closeButton: {
     padding: 4,
@@ -414,10 +412,8 @@ const styles = StyleSheet.create({
   searchInputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0A0A0A',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#2D3748',
     paddingHorizontal: 12,
   },
   searchIcon: {
@@ -427,7 +423,6 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 48,
     fontSize: 16,
-    color: '#fff',
   },
   clearButton: {
     padding: 4,
@@ -444,7 +439,6 @@ const styles = StyleSheet.create({
   hintText: {
     marginTop: 16,
     fontSize: 14,
-    color: '#666',
   },
   resultsList: {
     padding: 16,
@@ -452,7 +446,6 @@ const styles = StyleSheet.create({
   },
   resultCard: {
     flexDirection: 'row',
-    backgroundColor: '#0A0A0A',
     borderRadius: 12,
     padding: 12,
     marginBottom: 8,
@@ -474,11 +467,9 @@ const styles = StyleSheet.create({
   resultName: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#fff',
   },
   resultCategory: {
     fontSize: 13,
-    color: '#888',
     marginTop: 2,
   },
   statusRow: {
@@ -499,7 +490,6 @@ const styles = StyleSheet.create({
   },
   unitsText: {
     fontSize: 13,
-    color: '#888',
   },
   // Detail view styles
   detailContainer: {
@@ -511,15 +501,12 @@ const styles = StyleSheet.create({
   detailHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0A0A0A',
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
   },
   detailHeaderTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
     marginLeft: 8,
   },
   backButton: {
@@ -528,7 +515,6 @@ const styles = StyleSheet.create({
   detailContent: {
     padding: 16,
     gap: 16,
-    backgroundColor: '#1A1A1A',
   },
   itemHeader: {
     flexDirection: 'row',
@@ -541,15 +527,12 @@ const styles = StyleSheet.create({
   detailName: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
   },
   detailCategory: {
     fontSize: 14,
-    color: '#888',
     marginTop: 4,
   },
   stockInfoCard: {
-    backgroundColor: '#2A2A2A',
     borderRadius: 12,
     padding: 16,
     gap: 12,
@@ -557,7 +540,6 @@ const styles = StyleSheet.create({
   stockInfoTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#fff',
   },
   stockRow: {
     flexDirection: 'row',
@@ -570,17 +552,14 @@ const styles = StyleSheet.create({
   },
   stockInfoLabel: {
     fontSize: 12,
-    color: '#888',
     marginBottom: 4,
   },
   stockInfoValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
   },
   stockInfoUnit: {
     fontSize: 12,
-    color: '#888',
     marginTop: 2,
   },
   packagingCard: {
@@ -604,7 +583,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   statusCard: {
-    backgroundColor: '#2A2A2A',
     borderRadius: 12,
     padding: 16,
   },
@@ -632,7 +610,6 @@ const styles = StyleSheet.create({
   statusDescription: {
     flex: 1,
     fontSize: 13,
-    color: '#888',
   },
 });
 

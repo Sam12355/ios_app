@@ -101,6 +101,15 @@ const AppContent = () => {
     });
   }, []);
   
+  // Initialize background notifications for when app is minimized/closed
+  useEffect(() => {
+    import('./services/BackgroundNotificationService').then((module) => {
+      module.default.initialize().catch((error) => {
+        console.log('📱 App: Background notification initialization error:', error);
+      });
+    });
+  }, []);
+  
   return (
     <>
       <StatusBar

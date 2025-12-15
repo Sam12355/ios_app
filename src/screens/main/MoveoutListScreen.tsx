@@ -20,7 +20,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { BorderRadius, Colors, FontSizes, Spacing } from '../../theme/colors';
 
 const MoveoutListScreen = () => {
-  const { colors } = useTheme();
+  const { colors, designColors } = useTheme();
   const { profile } = useAuthStore();
   const isManager = profile?.role === 'manager' || profile?.role === 'assistant_manager' || profile?.role === 'admin';
 

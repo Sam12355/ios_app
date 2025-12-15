@@ -17,6 +17,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 
 import { AuthStackParamList } from '../../navigation/types';
 import { useAuthStore } from '../../stores/authStore';
+import { useTheme } from '../../theme/ThemeContext';
 
 type SignUpNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'SignUp'>;
 

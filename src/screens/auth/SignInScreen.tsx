@@ -17,14 +17,15 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 
 import { AuthStackParamList } from '../../navigation/types';
 import { useAuthStore } from '../../stores/authStore';
+import { useTheme } from '../../theme/ThemeContext';
+import { Colors } from '../../theme/colors';
 
 type SignInNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'SignIn'>;
 
-// Design System Colors - Matching Android app exactly
-const colors = {
+// Static colors for StyleSheet (dynamic colors are applied inline via themeColors)
+const staticColors = {
   primaryRed: '#E6002A',
   backgroundDark: '#121212',
-  surfaceDark: '#1E1E1E',
   cardBackground: '#2D2D2D',
   textPrimary: '#FFFFFF',
   textSecondary: '#B3B3B3',
@@ -35,6 +36,7 @@ const colors = {
 const SignInScreen = () => {
   const navigation = useNavigation<SignInNavigationProp>();
   const { signIn, isLoading, clearError } = useAuthStore();
+  const { colors: themeColors, isDark } = useTheme();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -61,9 +63,9 @@ const SignInScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       {/* Red Status Bar Area */}
-      <View style={styles.statusBarArea} />
+      <View style={[styles.statusBarArea, { backgroundColor: Colors.primary }]} />
       
       <KeyboardAvoidingView
         style={styles.flex}
@@ -76,29 +78,29 @@ const SignInScreen = () => {
         >
           {/* App Logo */}
           <View style={styles.logoSection}>
-            <Icon name="store" size={48} color={colors.primaryRed} />
-            <Text style={styles.logoText}>IMS</Text>
+            <Icon name="store" size={48} color={Colors.primary} />
+            <Text style={[styles.logoText, { color: themeColors.text }]}>IMS</Text>
           </View>
 
           {/* Auth Card */}
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: themeColors.card }]}>
             {/* Header */}
             <View style={styles.headerSection}>
-              <Text style={styles.welcomeText}>Welcome Back</Text>
-              <Text style={styles.subtitleText}>
+              <Text style={[styles.welcomeText, { color: themeColors.text }]}>Welcome Back</Text>
+              <Text style={[styles.subtitleText, { color: themeColors.textSecondary }]}>
                 Sign in to access your inventory{'\n'}management system
               </Text>
             </View>
 
             {/* Email Input */}
-            <View style={styles.inputContainer}>
-              <Icon name="mail-outline" size={22} color={colors.textMuted} style={styles.inputIcon} />
+            <View style={[styles.inputContainer, { backgroundColor: themeColors.surfaceVariant, borderColor: themeColors.border }]}>
+              <Icon name="mail-outline" size={22} color={themeColors.textSecondary} style={styles.inputIcon} />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: themeColors.text }]}
                 value={email}
                 onChangeText={setEmail}
                 placeholder="Email"
-                placeholderTextColor={colors.textMuted}
+                placeholderTextColor={themeColors.textSecondary}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -107,14 +109,14 @@ const SignInScreen = () => {
             </View>
 
             {/* Password Input */}
-            <View style={styles.inputContainer}>
-              <Icon name="lock-outline" size={22} color={colors.textMuted} style={styles.inputIcon} />
+            <View style={[styles.inputContainer, { backgroundColor: themeColors.surfaceVariant, borderColor: themeColors.border }]}>
+              <Icon name="lock-outline" size={22} color={themeColors.textSecondary} style={styles.inputIcon} />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: themeColors.text }]}
                 value={password}
                 onChangeText={setPassword}
                 placeholder="Password"
-                placeholderTextColor={colors.textMuted}
+                placeholderTextColor={themeColors.textSecondary}
                 secureTextEntry={!showPassword}
                 editable={!isLoading}
               />
@@ -125,7 +127,7 @@ const SignInScreen = () => {
                 <Icon
                   name={showPassword ? 'visibility-off' : 'visibility'}
                   size={22}
-                  color={colors.textMuted}
+                  color={themeColors.textSecondary}
                 />
               </TouchableOpacity>
             </View>
@@ -136,14 +138,14 @@ const SignInScreen = () => {
                 style={styles.rememberMeContainer}
                 onPress={() => setRememberMe(!rememberMe)}
               >
-                <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
-                  {rememberMe && <Icon name="check" size={14} color={colors.textPrimary} />}
+                <View style={[styles.checkbox, rememberMe && { backgroundColor: Colors.primary, borderColor: Colors.primary }, { borderColor: themeColors.border }]}>
+                  {rememberMe && <Icon name="check" size={14} color="#FFFFFF" />}
                 </View>
-                <Text style={styles.rememberMeText}>Remember me</Text>
+                <Text style={[styles.rememberMeText, { color: themeColors.text }]}>Remember me</Text>
               </TouchableOpacity>
               
               <TouchableOpacity onPress={() => {/* TODO: Forgot password */}}>
-                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                <Text style={[styles.forgotPasswordText, { color: Colors.primary }]}>Forgot Password?</Text>
               </TouchableOpacity>
             </View>
 
@@ -151,13 +153,14 @@ const SignInScreen = () => {
             <TouchableOpacity
               style={[
                 styles.signInButton,
+                { backgroundColor: Colors.primary },
                 (!isFormValid || isLoading) && styles.signInButtonDisabled,
               ]}
               onPress={handleSignIn}
               disabled={!isFormValid || isLoading}
             >
               {isLoading ? (
-                <ActivityIndicator color={colors.textPrimary} size="small" />
+                <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
                 <Text style={styles.signInButtonText}>Sign In</Text>
               )}
@@ -165,9 +168,9 @@ const SignInScreen = () => {
 
             {/* Sign Up Link */}
             <View style={styles.signUpContainer}>
-              <Text style={styles.signUpText}>Don't have an account? </Text>
+              <Text style={[styles.signUpText, { color: themeColors.textSecondary }]}>Don't have an account? </Text>
               <TouchableOpacity onPress={() => navigation.navigate('SignUp')} disabled={isLoading}>
-                <Text style={styles.signUpLink}>Sign Up</Text>
+                <Text style={[styles.signUpLink, { color: Colors.primary }]}>Sign Up</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -180,11 +183,11 @@ const SignInScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.backgroundDark,
+    backgroundColor: staticColors.backgroundDark,
   },
   statusBarArea: {
     height: Platform.OS === 'ios' ? 44 : 0,
-    backgroundColor: colors.primaryRed,
+    backgroundColor: staticColors.primaryRed,
   },
   flex: {
     flex: 1,
@@ -202,11 +205,11 @@ const styles = StyleSheet.create({
   logoText: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: colors.primaryRed,
+    color: staticColors.primaryRed,
     marginTop: 8,
   },
   card: {
-    backgroundColor: colors.cardBackground,
+    backgroundColor: staticColors.cardBackground,
     borderRadius: 16,
     padding: 24,
   },
@@ -217,12 +220,12 @@ const styles = StyleSheet.create({
   welcomeText: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: colors.textPrimary,
+    color: staticColors.textPrimary,
     marginBottom: 8,
   },
   subtitleText: {
     fontSize: 14,
-    color: colors.textSecondary,
+    color: staticColors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
   },
@@ -235,7 +238,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: colors.inputBorder,
+    borderColor: staticColors.inputBorder,
   },
   inputIcon: {
     marginRight: 12,
@@ -244,7 +247,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: '100%',
     fontSize: 16,
-    color: colors.textPrimary,
+    color: staticColors.textPrimary,
   },
   eyeIcon: {
     padding: 4,
@@ -264,38 +267,38 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 4,
     borderWidth: 2,
-    borderColor: colors.inputBorder,
+    borderColor: staticColors.inputBorder,
     marginRight: 8,
     justifyContent: 'center',
     alignItems: 'center',
   },
   checkboxChecked: {
-    backgroundColor: colors.primaryRed,
-    borderColor: colors.primaryRed,
+    backgroundColor: staticColors.primaryRed,
+    borderColor: staticColors.primaryRed,
   },
   rememberMeText: {
     fontSize: 14,
-    color: colors.textPrimary,
+    color: staticColors.textPrimary,
   },
   forgotPasswordText: {
     fontSize: 14,
-    color: colors.primaryRed,
+    color: staticColors.primaryRed,
     textDecorationLine: 'underline',
   },
   signInButton: {
     height: 52,
     borderRadius: 8,
-    backgroundColor: colors.textMuted,
+    backgroundColor: staticColors.textMuted,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
   },
   signInButtonDisabled: {
-    backgroundColor: colors.textMuted,
+    backgroundColor: staticColors.textMuted,
     opacity: 0.7,
   },
   signInButtonText: {
-    color: colors.textPrimary,
+    color: staticColors.textPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -305,12 +308,12 @@ const styles = StyleSheet.create({
   },
   signUpText: {
     fontSize: 14,
-    color: colors.textSecondary,
+    color: staticColors.textSecondary,
   },
   signUpLink: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.primaryRed,
+    color: staticColors.primaryRed,
   },
 });
 

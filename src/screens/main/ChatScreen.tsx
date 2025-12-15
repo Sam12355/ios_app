@@ -23,6 +23,7 @@ import { notificationService } from '../../services/NotificationService';
 import { localNotificationService } from '../../services/LocalNotificationService';
 import { useAuthStore } from '../../stores/authStore';
 import { useMessageStore } from '../../stores/messageStore';
+import { useTheme } from '../../theme/ThemeContext';
 
 // API config for online status (fallback)
 const API_BASE_URL = 'https://stock-nexus-84-main-2-1.onrender.com/api';
@@ -164,6 +165,7 @@ const MessageBubble: React.FC<{ message: ChatMessage; isFromCurrentUser: boolean
 export const ChatScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { profile: currentUser } = useAuthStore();
+  const { isDark, designColors } = useTheme();
   // Get message store actions and state
   const { setMessages: setStoreMessages, markMessagesAsRead, setCurrentUserId, setCurrentChatUserId } = useMessageStore();
   const navigation = useNavigation();
@@ -701,8 +703,9 @@ export const ChatScreen: React.FC = () => {
     setSending(true);
 
     // Optimistically add message at START of array (newest first for inverted list)
+    const tempId = `temp-${Date.now()}`;
     const optimisticMsg: ChatMessage = {
-      id: `temp-${Date.now()}`,
+      id: tempId,
       sender_id: currentUser?.id || '',
       receiver_id: userId,
       content,
@@ -712,11 +715,31 @@ export const ChatScreen: React.FC = () => {
     // Already at bottom with inverted list, no scroll needed
 
     try {
-      await apiClient.sendMessage(userId, content);
-      // Refresh to get actual message from server
-      fetchMessages();
+      // Send message and get the actual message back from server
+      const sentMessage = await apiClient.sendMessage(userId, content);
+      debugLog('[ChatScreen] ✅ Message sent, server response:', sentMessage);
+      
+      // Replace optimistic message with actual server message (like Kotlin does)
+      // DON'T call fetchMessages() - that causes the message to disappear!
+      if (sentMessage && sentMessage.id) {
+        const realMsg: ChatMessage = {
+          id: sentMessage.id,
+          sender_id: sentMessage.sender_id || currentUser?.id || '',
+          receiver_id: sentMessage.receiver_id || userId,
+          content: sentMessage.content || content,
+          sent_at: sentMessage.sent_at || sentMessage.created_at || new Date().toISOString(),
+          delivered_at: sentMessage.delivered_at,
+          read_at: sentMessage.read_at,
+        };
+        setMessages((prev) => prev.map(m => 
+          m.id === tempId ? realMsg : m
+        ));
+        debugLog('[ChatScreen] ✅ Replaced optimistic message with server message');
+      }
     } catch (error) {
       console.error('[ChatScreen] Failed to send message:', error);
+      // On error, remove the optimistic message or mark it as failed
+      setMessages((prev) => prev.filter(m => m.id !== tempId));
     } finally {
       setSending(false);
     }
@@ -733,9 +756,9 @@ export const ChatScreen: React.FC = () => {
 
   if (loading) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: designColors.background }]}>
         <View style={styles.loader}>
-          <ActivityIndicator size="large" color="#E6002A" />
+          <ActivityIndicator size="large" color={designColors.primaryRed} />
         </View>
       </View>
     );
@@ -743,19 +766,19 @@ export const ChatScreen: React.FC = () => {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: designColors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={90}
     >
       {/* Chat Header - shows who you're chatting with */}
-      <View style={styles.chatHeader}>
+      <View style={[styles.chatHeader, { backgroundColor: designColors.cardBackground, borderBottomColor: designColors.borderLight }]}>
         {/* Back button */}
         <TouchableOpacity 
           onPress={() => navigation.goBack()} 
           style={styles.backButton}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Icon name="arrow-back" size={24} color="#FFFFFF" />
+          <Icon name="arrow-back" size={24} color={designColors.textPrimary} />
         </TouchableOpacity>
 
         {/* Avatar with online indicator */}
@@ -774,7 +797,7 @@ export const ChatScreen: React.FC = () => {
             {isOnline && <View style={styles.onlineIndicator} />}
           </View>
         </TouchableOpacity>
-        <Text style={styles.chatHeaderTitle}>{userName || 'Chat'}</Text>
+        <Text style={[styles.chatHeaderTitle, { color: designColors.textPrimary }]}>{userName || 'Chat'}</Text>
       </View>
 
       {/* Messages List - inverted so newest at bottom */}
@@ -797,21 +820,21 @@ export const ChatScreen: React.FC = () => {
         ListFooterComponent={
           loadingMore ? (
             <View style={{ padding: 20, transform: [{ scaleY: -1 }] }}>
-              <ActivityIndicator size="small" color="#E6002A" />
+              <ActivityIndicator size="small" color={designColors.primaryRed} />
             </View>
           ) : null
         }
         ListEmptyComponent={
           <View style={[styles.emptyContainer, { transform: [{ scaleY: -1 }] }]}>
-            <Icon name="chat-bubble-outline" size={64} color="#808080" />
-            <Text style={styles.emptyText}>Start a conversation</Text>
+            <Icon name="chat-bubble-outline" size={64} color={designColors.textMuted} />
+            <Text style={[styles.emptyText, { color: designColors.textMuted }]}>Start a conversation</Text>
           </View>
         }
       />
 
       {/* Typing indicator - inline above input bar, visible when other user is typing */}
       {isTyping && (
-        <View style={styles.typingContainerInline}>
+        <View style={[styles.typingContainerInline, { backgroundColor: designColors.background }]}>
           <View style={styles.typingBubble}>
             <TypingDots />
           </View>
@@ -819,11 +842,11 @@ export const ChatScreen: React.FC = () => {
       )}
 
       {/* Input Bar - matching Kotlin */}
-      <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+      <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 8), backgroundColor: designColors.cardBackground }]}>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: designColors.surfaceVariant, color: designColors.textPrimary, borderColor: designColors.textMuted }]}
           placeholder="Type a message..."
-          placeholderTextColor="#808080"
+          placeholderTextColor={designColors.textMuted}
           value={messageText}
           onChangeText={setMessageText}
           multiline

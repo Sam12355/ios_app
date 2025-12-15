@@ -320,23 +320,4 @@ export interface SoftDrinksReportData {
 }
 
 // Message models
-export interface Message {
-  id: string;
-  sender_id: string;
-  receiver_id?: string;
-  thread_id?: string;
-  content: string;
-  created_at: string;
-  delivered_at?: string;
-  read_at?: string;
-}
 
-export interface Thread {
-  id: string;
-  participant_id?: string;
-  participant_name?: string;
-  participant_avatar?: string;
-  last_message?: string;
-  unread_count: number;
-  updated_at: string;
-}

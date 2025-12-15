@@ -29,6 +29,7 @@ const showToast = (message: string, type: 'success' | 'error' | 'info' = 'succes
 import apiClient from '../../api/ApiClient';
 import { Profile, UserRole } from '../../models';
 import { useAuthStore } from '../../stores/authStore';
+import { useTheme } from '../../theme/ThemeContext';
 
 // Design Colors matching Android
 const designColors = {
@@ -118,6 +119,7 @@ const BorderRadius = {
 
 const StaffScreen = () => {
   const { profile } = useAuthStore();
+  const { isDark, designColors: themeDesignColors } = useTheme();
   const currentUserId = profile?.id;
   const userRole = profile?.role || 'staff';
   
@@ -126,13 +128,13 @@ const StaffScreen = () => {
   const isManager = ['admin', 'regional_manager', 'district_manager', 'manager', 'assistant_manager'].includes(userRole);
   const canManageStaff = ['admin', 'regional_manager', 'district_manager', 'manager', 'assistant_manager'].includes(userRole);
 
-  // Colors for dark theme (matching Android)
+  // Colors for theme (matching Android) - use themeDesignColors
   const colors = {
-    background: designColors.backgroundDark,
-    card: designColors.cardDark,
-    surfaceVariant: designColors.surfaceDark,
-    text: designColors.textPrimary,
-    textSecondary: designColors.textSecondary,
+    background: themeDesignColors.background,
+    card: themeDesignColors.cardDark,
+    surfaceVariant: themeDesignColors.surfaceDark,
+    text: themeDesignColors.textPrimary,
+    textSecondary: themeDesignColors.textSecondary,
   };
   
   // User reference for compatibility
@@ -534,7 +536,7 @@ const StaffScreen = () => {
     const roleColor = getRoleColor(member.role || 'staff');
     
     return (
-      <View style={styles.staffCard}>
+      <View style={[styles.staffCard, { backgroundColor: themeDesignColors.cardBackground }]}>
         <View style={styles.staffContent}>
           {/* Avatar */}
           <View style={styles.avatarContainer}>
@@ -551,14 +553,14 @@ const StaffScreen = () => {
           
           {/* Staff Info */}
           <View style={styles.staffInfo}>
-            <Text style={styles.staffName} numberOfLines={1}>
+            <Text style={[styles.staffName, { color: themeDesignColors.textPrimary }]} numberOfLines={1}>
               {member.name || 'Unknown'}
             </Text>
-            <Text style={styles.staffEmail} numberOfLines={1}>
+            <Text style={[styles.staffEmail, { color: themeDesignColors.textSecondary }]} numberOfLines={1}>
               {member.email}
             </Text>
             {member.phone && (
-              <Text style={styles.staffPhone}>{member.phone}</Text>
+              <Text style={[styles.staffPhone, { color: themeDesignColors.textSecondary }]}>{member.phone}</Text>
             )}
             
             {/* Badges Row */}
@@ -574,7 +576,7 @@ const StaffScreen = () => {
               {/* Active/Inactive Badge */}
               <View style={[
                 styles.statusBadge,
-                { backgroundColor: isActive ? designColors.successGreen : designColors.deleteRed }
+                { backgroundColor: isActive ? themeDesignColors.successGreen : themeDesignColors.deleteRed }
               ]}>
                 <Text style={styles.statusBadgeText}>
                   {isActive ? 'Active' : 'Inactive'}
@@ -584,12 +586,12 @@ const StaffScreen = () => {
             
             {/* Access Info */}
             <View style={styles.infoRow}>
-              <Icon name="login" size={12} color={designColors.textSecondary} />
-              <Text style={styles.infoText}>
+              <Icon name="login" size={12} color={themeDesignColors.textSecondary} />
+              <Text style={[styles.infoText, { color: themeDesignColors.textSecondary }]}>
                 Access: {member.access_count || 0}
               </Text>
               {member.last_access && (
-                <Text style={styles.infoText}>
+                <Text style={[styles.infoText, { color: themeDesignColors.textSecondary }]}>
                   • Last: {member.last_access.substring(0, 10)}
                 </Text>
               )}
@@ -609,7 +611,7 @@ const StaffScreen = () => {
                     setShowActivateDialog(true);
                   }}
                 >
-                  <Icon name="check-circle" size={14} color={designColors.successGreen} />
+                  <Icon name="check-circle" size={14} color={themeDesignColors.successGreen} />
                   <Text style={styles.activateBtnText}>Activate</Text>
                 </TouchableOpacity>
               )}
@@ -621,7 +623,7 @@ const StaffScreen = () => {
                   style={styles.iconButton}
                   onPress={() => handleEditStaff(member)}
                 >
-                  <Icon name="edit" size={20} color={designColors.textSecondary} />
+                  <Icon name="edit" size={20} color={themeDesignColors.textSecondary} />
                 </TouchableOpacity>
                 
                 {/* Delete IconButton (only if not current user) */}
@@ -633,7 +635,7 @@ const StaffScreen = () => {
                       setShowDeleteDialog(true);
                     }}
                   >
-                    <Icon name="delete" size={20} color={designColors.textSecondary} />
+                    <Icon name="delete" size={20} color={themeDesignColors.textSecondary} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -762,13 +764,12 @@ const StaffScreen = () => {
         }}
       >
         <View style={styles.modalOverlay}>
-          <ScrollView 
-            style={styles.modalScrollView}
-            contentContainerStyle={styles.modalScrollContent}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={[styles.formModalContent, { backgroundColor: colors.card }]}>
+          <View style={[styles.formModalContent, { backgroundColor: colors.card }]}>
+            <ScrollView 
+              showsVerticalScrollIndicator={true}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ paddingBottom: 20 }}
+            >
               {/* Header - matching Kotlin */}
               <View style={styles.formHeader}>
                 <Text style={[styles.modalTitle, { color: colors.text }]}>
@@ -786,7 +787,7 @@ const StaffScreen = () => {
               <View style={styles.inputGroup}>
                 <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Full Name *</Text>
                 <TextInput
-                  style={[styles.textInput, { backgroundColor: colors.surfaceVariant, color: colors.text, borderColor: designColors.divider, borderWidth: 1 }]}
+                  style={[styles.textInput, { backgroundColor: colors.surfaceVariant, color: colors.text, borderColor: themeDesignColors.divider, borderWidth: 1 }]}
                   placeholder="Enter full name"
                   placeholderTextColor={colors.textSecondary}
                   value={formData.name}
@@ -798,7 +799,7 @@ const StaffScreen = () => {
               <View style={styles.inputGroup}>
                 <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Email Address *</Text>
                 <TextInput
-                  style={[styles.textInput, { backgroundColor: colors.surfaceVariant, color: colors.text, borderColor: designColors.divider, borderWidth: 1 }]}
+                  style={[styles.textInput, { backgroundColor: colors.surfaceVariant, color: colors.text, borderColor: themeDesignColors.divider, borderWidth: 1 }]}
                   placeholder="Enter email address"
                   placeholderTextColor={colors.textSecondary}
                   value={formData.email}
@@ -813,7 +814,7 @@ const StaffScreen = () => {
               <View style={styles.inputGroup}>
                 <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Phone Number</Text>
                 <TextInput
-                  style={[styles.textInput, { backgroundColor: colors.surfaceVariant, color: colors.text, borderColor: designColors.divider, borderWidth: 1 }]}
+                  style={[styles.textInput, { backgroundColor: colors.surfaceVariant, color: colors.text, borderColor: themeDesignColors.divider, borderWidth: 1 }]}
                   placeholder="Enter phone number"
                   placeholderTextColor={colors.textSecondary}
                   value={formData.phone}
@@ -827,7 +828,7 @@ const StaffScreen = () => {
                 <View style={styles.inputGroup}>
                   <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Branch *</Text>
                   <TouchableOpacity
-                    style={[styles.dropdownButton, { backgroundColor: colors.surfaceVariant, borderColor: designColors.divider, borderWidth: 1 }]}
+                    style={[styles.dropdownButton, { backgroundColor: colors.surfaceVariant, borderColor: themeDesignColors.divider, borderWidth: 1 }]}
                     onPress={() => setShowBranchDropdown(!showBranchDropdown)}
                   >
                     <Text style={[styles.dropdownButtonText, { color: formData.branchId ? colors.text : colors.textSecondary }]}>
@@ -864,7 +865,7 @@ const StaffScreen = () => {
                 <View style={styles.inputGroup}>
                   <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Role *</Text>
                   <TouchableOpacity
-                    style={[styles.dropdownButton, { backgroundColor: colors.surfaceVariant, borderColor: designColors.divider, borderWidth: 1 }]}
+                    style={[styles.dropdownButton, { backgroundColor: colors.surfaceVariant, borderColor: themeDesignColors.divider, borderWidth: 1 }]}
                     onPress={() => setShowRoleDropdown(!showRoleDropdown)}
                   >
                     <Text style={[styles.dropdownButtonText, { color: formData.role ? colors.text : colors.textSecondary }]}>
@@ -903,7 +904,7 @@ const StaffScreen = () => {
                 <View style={styles.inputGroup}>
                   <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Region *</Text>
                   <TouchableOpacity
-                    style={[styles.dropdownButton, { backgroundColor: colors.surfaceVariant, borderColor: designColors.divider, borderWidth: 1 }]}
+                    style={[styles.dropdownButton, { backgroundColor: colors.surfaceVariant, borderColor: themeDesignColors.divider, borderWidth: 1 }]}
                     onPress={() => setShowRegionDropdown(!showRegionDropdown)}
                   >
                     <Text style={[styles.dropdownButtonText, { color: formData.regionId ? colors.text : colors.textSecondary }]}>
@@ -936,7 +937,7 @@ const StaffScreen = () => {
                   <View style={styles.inputGroup}>
                     <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Region *</Text>
                     <TouchableOpacity
-                      style={[styles.dropdownButton, { backgroundColor: colors.surfaceVariant, borderColor: designColors.divider, borderWidth: 1 }]}
+                      style={[styles.dropdownButton, { backgroundColor: colors.surfaceVariant, borderColor: themeDesignColors.divider, borderWidth: 1 }]}
                       onPress={() => setShowRegionDropdown(!showRegionDropdown)}
                     >
                       <Text style={[styles.dropdownButtonText, { color: formData.regionId ? colors.text : colors.textSecondary }]}>
@@ -965,7 +966,7 @@ const StaffScreen = () => {
                   <View style={styles.inputGroup}>
                     <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>District *</Text>
                     <TouchableOpacity
-                      style={[styles.dropdownButton, { backgroundColor: colors.surfaceVariant, borderColor: designColors.divider, borderWidth: 1, opacity: formData.regionId ? 1 : 0.5 }]}
+                      style={[styles.dropdownButton, { backgroundColor: colors.surfaceVariant, borderColor: themeDesignColors.divider, borderWidth: 1, opacity: formData.regionId ? 1 : 0.5 }]}
                       onPress={() => formData.regionId && setShowDistrictDropdown(!showDistrictDropdown)}
                       disabled={!formData.regionId}
                     >
@@ -1001,7 +1002,7 @@ const StaffScreen = () => {
                 </Text>
                 <View style={styles.passwordContainer}>
                   <TextInput
-                    style={[styles.textInput, styles.passwordInput, { backgroundColor: colors.surfaceVariant, color: colors.text, borderColor: designColors.divider, borderWidth: 1 }]}
+                    style={[styles.textInput, styles.passwordInput, { backgroundColor: colors.surfaceVariant, color: colors.text, borderColor: themeDesignColors.divider, borderWidth: 1 }]}
                     placeholder={selectedStaff ? 'Leave blank to keep current' : 'Enter password (min 6 characters)'}
                     placeholderTextColor={colors.textSecondary}
                     value={formData.password}
@@ -1026,7 +1027,7 @@ const StaffScreen = () => {
               <View style={styles.inputGroup}>
                 <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Photo URL (Optional)</Text>
                 <TextInput
-                  style={[styles.textInput, { backgroundColor: colors.surfaceVariant, color: colors.text, borderColor: designColors.divider, borderWidth: 1 }]}
+                  style={[styles.textInput, { backgroundColor: colors.surfaceVariant, color: colors.text, borderColor: themeDesignColors.divider, borderWidth: 1 }]}
                   placeholder="https://example.com/photo.jpg"
                   placeholderTextColor={colors.textSecondary}
                   value={formData.photoUrl}
@@ -1036,35 +1037,36 @@ const StaffScreen = () => {
                 />
               </View>
 
-              {/* Action Buttons - matching Kotlin */}
-              <View style={styles.modalButtonsRow}>
-                <TouchableOpacity
-                  style={styles.cancelButton}
-                  onPress={() => {
-                    setShowAddDialog(false);
-                    setEditModalVisible(false);
-                  }}
-                  disabled={isSubmitting}
-                >
-                  <Text style={[styles.cancelButtonText, { color: colors.text }]}>Cancel</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity
-                  style={[styles.submitButton, { backgroundColor: Colors.primary, opacity: isFormValid() && !isSubmitting ? 1 : 0.5 }]}
-                  onPress={selectedStaff ? handleUpdateStaff : handleSaveStaff}
-                  disabled={!isFormValid() || isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <ActivityIndicator color="#FFFFFF" size="small" />
-                  ) : (
-                    <Text style={styles.submitButtonText}>
-                      {selectedStaff ? 'Update Staff' : 'Add Staff'}
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              </View>
+            </ScrollView>
+            
+            {/* Action Buttons - Always visible at bottom */}
+            <View style={[styles.modalButtonsRow, { borderTopWidth: 1, borderTopColor: themeDesignColors.divider, paddingTop: 12, marginTop: 8 }]}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => {
+                  setShowAddDialog(false);
+                  setEditModalVisible(false);
+                }}
+                disabled={isSubmitting}
+              >
+                <Text style={[styles.cancelButtonText, { color: colors.text }]}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.submitButton, { backgroundColor: Colors.primary, opacity: isFormValid() && !isSubmitting ? 1 : 0.5 }]}
+                onPress={selectedStaff ? handleUpdateStaff : handleSaveStaff}
+                disabled={!isFormValid() || isSubmitting}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.submitButtonText}>
+                    {selectedStaff ? 'Update Staff' : 'Add Staff'}
+                  </Text>
+                )}
+              </TouchableOpacity>
             </View>
-          </ScrollView>
+          </View>
         </View>
       </Modal>
 
@@ -1368,9 +1370,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingBottom: 100,
   },
-  // Staff Card
+  // Staff Card - backgroundColor applied inline for theme support
   staffCard: {
-    backgroundColor: designColors.cardDark,
     borderRadius: BorderRadius.md,
     marginBottom: Spacing.sm,
     overflow: 'hidden',
@@ -1407,17 +1408,14 @@ const styles = StyleSheet.create({
   staffName: {
     fontSize: FontSizes.md,
     fontWeight: '600',
-    color: designColors.textPrimary,
     marginBottom: 2,
   },
   staffEmail: {
     fontSize: FontSizes.sm,
-    color: designColors.textSecondary,
     marginBottom: 2,
   },
   staffPhone: {
     fontSize: FontSizes.sm,
-    color: designColors.textSecondary,
     marginBottom: Spacing.xs,
   },
   badgesRow: {
@@ -1458,7 +1456,6 @@ const styles = StyleSheet.create({
   },
   infoText: {
     fontSize: FontSizes.sm,
-    color: designColors.textSecondary,
   },
   staffActions: {
     marginTop: Spacing.sm,
@@ -1499,7 +1496,7 @@ const styles = StyleSheet.create({
   activateBtnText: {
     fontSize: FontSizes.xs,
     fontWeight: '500',
-    color: designColors.successGreen,
+    color: '#4CAF50',
   },
   iconButtonsRow: {
     flexDirection: 'row',
@@ -1539,23 +1536,18 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   // Modals
-  modalScrollView: {
-    flex: 1,
-  },
-  modalScrollContent: {
-    flexGrow: 1,
-    padding: Spacing.lg,
-  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 16,
   },
   formModalContent: {
     width: '100%',
+    maxHeight: '85%',
     borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
+    padding: Spacing.md,
   },
   textInput: {
     paddingHorizontal: Spacing.md,

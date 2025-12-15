@@ -79,6 +79,9 @@ class ApiClient {
   
   // Badge refresh callback - called when unread count changes
   private badgeRefreshCallback: (() => void) | null = null;
+  
+  // Badge decrement callback - called to decrement badge count by 1
+  private badgeDecrementCallback: (() => void) | null = null;
 
   constructor() {
     this.loadStoredToken();
@@ -166,6 +169,33 @@ class ApiClient {
     this.badgeRefreshCallback = callback;
   }
 
+  // Set callback to decrement badge count by 1
+  setBadgeDecrementCallback(callback: (() => void) | null) {
+    this.badgeDecrementCallback = callback;
+  }
+
+  // Trigger badge refresh immediately (called after marking notification as read)
+  triggerBadgeRefresh() {
+    if (this.badgeRefreshCallback) {
+      try {
+        this.badgeRefreshCallback();
+      } catch (e) {
+        debugLog('[ApiClient] Error while running badgeRefreshCallback:', e);
+      }
+    }
+  }
+
+  // Decrement badge count by 1 (fast, no API call)
+  decrementBadgeCount() {
+    if (this.badgeDecrementCallback) {
+      try {
+        this.badgeDecrementCallback();
+      } catch (e) {
+        debugLog('[ApiClient] Error while running badgeDecrementCallback:', e);
+      }
+    }
+  }
+
   private async getHeaders(): Promise<Record<string, string>> {
     if (!this.accessToken) {
       this.accessToken = await AsyncStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
@@ -194,7 +224,7 @@ class ApiClient {
     }
   }
 
-  private async request<T>(
+  async request<T>(
     endpoint: string,
     options: RequestInit = {},
     timeout = DEFAULT_TIMEOUT,
@@ -283,14 +313,19 @@ class ApiClient {
         return data;
       } catch (error: any) {
         // Handle network errors (AbortError, fetch failures) with exponential backoff
-        if (retryCount < effectiveMaxRetries && (error.name === 'AbortError' || error.message?.includes('Network') || error.message?.includes('Failed to fetch'))) {
-          const backoffDelay = Math.min(1000 * Math.pow(2, retryCount), 10000); // Max 10 seconds
-          // Don't log network errors for auth endpoints during initial check
-          if (!isAuthEndpoint || retryCount > 0) {
-            this.logError(`Network error on ${endpoint}`, `Retrying in ${backoffDelay}ms (attempt ${retryCount + 1}/${effectiveMaxRetries})`);
+        const isNetworkError = error.name === 'AbortError' || error.message?.includes('Network') || error.message?.includes('Failed to fetch') || error.message?.includes('timeout');
+        if (retryCount < effectiveMaxRetries && isNetworkError) {
+          const backoffDelay = Math.min(500 * Math.pow(2, retryCount), 5000); // Start at 500ms, Max 5 seconds
+          // Only log on final retry attempt to reduce spam
+          if (retryCount === effectiveMaxRetries - 1) {
+            debugLog(`[ApiClient] ⚠️ Network issue on ${endpoint}, final retry...`);
           }
           await delay(backoffDelay);
           return this.request<T>(endpoint, options, timeout, retryCount + 1, effectiveMaxRetries, true);
+        }
+        // Only throw if all retries exhausted - silently fail otherwise
+        if (retryCount >= effectiveMaxRetries) {
+          throw error;
         }
         throw error;
       }
@@ -1383,7 +1418,7 @@ class ApiClient {
   }
 
   async markNotificationAsRead(id: string): Promise<void> {
-    await this.request(`/notifications/${id}/read`, { method: 'POST' });
+    await this.request(`/notifications/${id}/read`, { method: 'PATCH' });
   }
 
   async markAllNotificationsAsRead(): Promise<void> {

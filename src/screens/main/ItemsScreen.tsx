@@ -35,8 +35,8 @@ const showToast = (message: string, type: 'success' | 'error' | 'info' = 'succes
   });
 };
 
-// Design Colors matching Android
-const designColors = {
+// Static design colors for StyleSheet (dynamic colors applied inline)
+const staticDesignColors = {
   primaryRed: '#E6002A',
   backgroundDark: '#121212',
   surfaceDark: '#1E1E1E',
@@ -60,7 +60,7 @@ const CATEGORIES = [
 ];
 
 const ItemsScreen = () => {
-  const { colors, isDarkMode } = useTheme();
+  const { colors, isDarkMode, designColors } = useTheme();
   const { profile } = useAuthStore();
   const isManager = profile?.role === 'manager' || profile?.role === 'assistant_manager' || profile?.role === 'admin';
 
@@ -439,7 +439,7 @@ const ItemsScreen = () => {
     const imageSource = getImageSource(item);
     
     return (
-    <View style={styles.itemCard}>
+    <View style={[styles.itemCard, { backgroundColor: designColors.cardBackground, shadowColor: designColors.shadowColor, shadowOpacity: designColors.shadowOpacity, shadowRadius: designColors.shadowRadius, shadowOffset: designColors.shadowOffset, elevation: designColors.elevation }]}>
       {/* Header row with image, name, and actions */}
       <View style={styles.itemHeader}>
         {/* Item image and name */}
@@ -447,16 +447,16 @@ const ItemsScreen = () => {
           {imageSource ? (
             <Image source={imageSource} style={styles.itemImage} />
           ) : (
-            <View style={styles.itemImagePlaceholder}>
+            <View style={[styles.itemImagePlaceholder, { backgroundColor: designColors.surface }]}>
               <Icon name="inventory" size={30} color={designColors.textMuted} />
             </View>
           )}
           
           <View style={styles.itemNameContainer}>
-            <Text style={styles.itemName} numberOfLines={1}>
+            <Text style={[styles.itemName, { color: designColors.textPrimary }]} numberOfLines={1}>
               {item.name}
             </Text>
-            <Text style={styles.itemCreatedDate}>
+            <Text style={[styles.itemCreatedDate, { color: designColors.textSecondary }]}>
               Created {formatDate(item.created_at)}
             </Text>
           </View>
@@ -469,32 +469,32 @@ const ItemsScreen = () => {
               style={styles.actionButton}
               onPress={() => handleEditItem(item)}
             >
-              <Icon name="edit" size={22} color={designColors.editBlue} />
+              <Icon name="edit" size={22} color={staticDesignColors.editBlue} />
             </TouchableOpacity>
             
             <TouchableOpacity
               style={styles.actionButton}
               onPress={() => handleDeleteItem(item)}
             >
-              <Icon name="delete" size={22} color={designColors.deleteRed} />
+              <Icon name="delete" size={22} color={staticDesignColors.deleteRed} />
             </TouchableOpacity>
           </View>
         )}
       </View>
       
-      <View style={styles.itemDivider} />
+      <View style={[styles.itemDivider, { backgroundColor: designColors.divider }]} />
       
       {/* Details section */}
       <View style={styles.itemDetails}>
         {/* Category */}
         <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Category:</Text>
+          <Text style={[styles.detailLabel, { color: designColors.textSecondary }]}>Category:</Text>
           {item.category ? (
-            <View style={styles.categoryBadge}>
-              <Text style={styles.categoryText}>{item.category}</Text>
+            <View style={[styles.categoryBadge, { backgroundColor: designColors.primaryRed + '1A' }]}>
+              <Text style={[styles.categoryText, { color: designColors.primaryRed }]}>{item.category}</Text>
             </View>
           ) : (
-            <Text style={styles.detailValueMuted}>Not specified</Text>
+            <Text style={[styles.detailValueMuted, { color: designColors.textMuted }]}>Not specified</Text>
           )}
         </View>
         
@@ -534,28 +534,28 @@ const ItemsScreen = () => {
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={[styles.loadingContainer, { backgroundColor: designColors.background }]}>
         <ActivityIndicator size="large" color={designColors.primaryRed} />
-        <Text style={styles.loadingText}>Loading items...</Text>
+        <Text style={[styles.loadingText, { color: designColors.textSecondary }]}>Loading items...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: designColors.background }]}>
       {/* Header section matching Android */}
-      <View style={styles.headerSection}>
+      <View style={[styles.headerSection, { backgroundColor: designColors.background }]}>
         {/* Add Item button and Search icon */}
         <View style={styles.headerRow}>
           {isManager && (
-            <TouchableOpacity style={styles.addButton} onPress={handleAddItem}>
+            <TouchableOpacity style={[styles.addButton, { backgroundColor: designColors.primaryRed }]} onPress={handleAddItem}>
               <Icon name="add" size={20} color="#FFFFFF" />
               <Text style={styles.addButtonText}>Add Item</Text>
             </TouchableOpacity>
           )}
           
           <TouchableOpacity
-            style={styles.searchToggle}
+            style={[styles.searchToggle, { backgroundColor: designColors.surface }]}
             onPress={() => setShowSearchBar(!showSearchBar)}
           >
             <Icon 
@@ -568,10 +568,10 @@ const ItemsScreen = () => {
         
         {/* Search bar - shows below when search icon is clicked */}
         {showSearchBar && (
-          <View style={styles.searchContainer}>
+          <View style={[styles.searchContainer, { backgroundColor: designColors.surface, borderColor: designColors.border }]}>
             <Icon name="search" size={20} color={designColors.textSecondary} />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { color: designColors.textPrimary }]}
               placeholder="Search items..."
               placeholderTextColor={designColors.textSecondary}
               value={searchQuery}
@@ -587,7 +587,7 @@ const ItemsScreen = () => {
         )}
       </View>
       
-      <View style={styles.divider} />
+      <View style={[styles.divider, { backgroundColor: designColors.divider }]} />
 
       {/* Items List */}
       <FlatList
@@ -604,7 +604,7 @@ const ItemsScreen = () => {
           />
         }
         ListHeaderComponent={
-          <Text style={styles.listHeader}>
+          <Text style={[styles.listHeader, { color: designColors.textPrimary }]}>
             Manage Items ({filteredItems.length})
           </Text>
         }
@@ -626,10 +626,10 @@ const ItemsScreen = () => {
         onRequestClose={() => setShowDeleteDialog(false)}
       >
         <View style={styles.dialogOverlay}>
-          <View style={styles.dialogContent}>
-            <Icon name="delete" size={32} color={designColors.textPrimary} />
-            <Text style={styles.dialogTitle}>Delete Item</Text>
-            <Text style={styles.dialogMessage}>
+          <View style={[styles.dialogContent, { backgroundColor: designColors.surfaceVariant }]}>
+            <Icon name="delete" size={32} color={designColors.deleteRed} />
+            <Text style={[styles.dialogTitle, { color: designColors.textPrimary }]}>Delete Item</Text>
+            <Text style={[styles.dialogMessage, { color: designColors.textSecondary }]}>
               Are you sure you want to delete '{itemToDelete?.name}'? This action cannot be undone.
             </Text>
             <View style={styles.dialogButtons}>
@@ -637,10 +637,10 @@ const ItemsScreen = () => {
                 style={styles.dialogButtonCancel}
                 onPress={() => setShowDeleteDialog(false)}
               >
-                <Text style={styles.dialogButtonCancelText}>Cancel</Text>
+                <Text style={[styles.dialogButtonCancelText, { color: designColors.textSecondary }]}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.dialogButtonDelete}
+                style={[styles.dialogButtonDelete, { backgroundColor: designColors.deleteRed }]}
                 onPress={confirmDeleteItem}
               >
                 <Text style={styles.dialogButtonDeleteText}>Delete</Text>
@@ -656,25 +656,25 @@ const ItemsScreen = () => {
         animationType="slide"
         onRequestClose={() => !isSubmitting && setItemModalVisible(false)}
       >
-        <View style={styles.modalContainer}>
+        <View style={[styles.modalContainer, { backgroundColor: designColors.background }]}>
           {/* Modal Header */}
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>
+            <Text style={[styles.modalTitle, { color: designColors.textPrimary }]}>
               {editingItem ? 'Edit Item' : 'Add Item'}
             </Text>
           </View>
           
-          <View style={styles.modalDivider} />
+          <View style={[styles.modalDivider, { backgroundColor: designColors.divider }]} />
 
           <ScrollView contentContainerStyle={styles.modalContent}>
             {/* Basic Details Section */}
-            <Text style={styles.sectionLabel}>BASIC ITEM DETAILS</Text>
+            <Text style={[styles.sectionLabel, { color: designColors.textMuted }]}>BASIC ITEM DETAILS</Text>
             
             {/* Item Name */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Item Name *</Text>
+              <Text style={[styles.inputLabel, { color: designColors.textSecondary }]}>Item Name *</Text>
               <TextInput
-                style={[styles.textInput, formErrors.name ? styles.textInputError : null]}
+                style={[styles.textInput, { backgroundColor: designColors.cardBackground, borderColor: designColors.divider, color: designColors.textPrimary }, formErrors.name ? styles.textInputError : null]}
                 value={formData.name}
                 onChangeText={(text) => {
                   setFormData((prev) => ({ ...prev, name: text }));
@@ -690,29 +690,29 @@ const ItemsScreen = () => {
 
             {/* Category Dropdown */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Category *</Text>
+              <Text style={[styles.inputLabel, { color: designColors.textSecondary }]}>Category *</Text>
               <TouchableOpacity
-                style={[styles.dropdownButton, formErrors.category ? styles.textInputError : null]}
+                style={[styles.dropdownButton, { backgroundColor: designColors.cardBackground, borderColor: designColors.divider }, formErrors.category ? styles.textInputError : null]}
                 onPress={() => setShowCategoryDropdown(!showCategoryDropdown)}
               >
-                <Text style={formData.category ? styles.dropdownValue : styles.dropdownPlaceholder}>
+                <Text style={[formData.category ? styles.dropdownValue : styles.dropdownPlaceholder, { color: formData.category ? designColors.textPrimary : designColors.textSecondary }]}>
                   {formData.category || 'Select category'}
                 </Text>
                 <Icon name={showCategoryDropdown ? 'arrow-drop-up' : 'arrow-drop-down'} size={24} color={designColors.textSecondary} />
               </TouchableOpacity>
               {showCategoryDropdown && (
-                <View style={styles.dropdownMenu}>
+                <View style={[styles.dropdownMenu, { backgroundColor: designColors.cardBackground, borderColor: designColors.divider }]}>
                   {CATEGORIES.map((category) => (
                     <TouchableOpacity
                       key={category}
-                      style={styles.dropdownItem}
+                      style={[styles.dropdownItem, { borderBottomColor: designColors.divider }]}
                       onPress={() => {
                         setFormData((prev) => ({ ...prev, category }));
                         setFormErrors((prev) => ({ ...prev, category: '' }));
                         setShowCategoryDropdown(false);
                       }}
                     >
-                      <Text style={styles.dropdownItemText}>{category}</Text>
+                      <Text style={[styles.dropdownItemText, { color: designColors.textPrimary }]}>{category}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -726,7 +726,7 @@ const ItemsScreen = () => {
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Description</Text>
               <TextInput
-                style={[styles.textInput, styles.textArea]}
+                style={[styles.textInput, styles.textArea, { backgroundColor: designColors.cardBackground, borderColor: designColors.divider, color: designColors.textPrimary }]}
                 value={formData.description}
                 onChangeText={(text) => setFormData((prev) => ({ ...prev, description: text }))}
                 placeholder="Enter item description"
@@ -754,7 +754,7 @@ const ItemsScreen = () => {
                       </View>
                     </View>
                   ) : (
-                    <View style={styles.imagePlaceholder}>
+                    <View style={[styles.imagePlaceholder, { backgroundColor: designColors.cardBackground, borderColor: designColors.divider }]}>
                       <Icon name="add-a-photo" size={40} color={designColors.textMuted} />
                       <Text style={styles.imagePlaceholderText}>Tap to add image</Text>
                     </View>
@@ -778,7 +778,7 @@ const ItemsScreen = () => {
               <View style={styles.inputWithIcon}>
                 <Icon name="ac-unit" size={20} color={designColors.infoCyan} style={styles.inputIcon} />
                 <TextInput
-                  style={[styles.textInput, { flex: 1, paddingLeft: 40 }]}
+                  style={[styles.textInput, { flex: 1, paddingLeft: 40, backgroundColor: designColors.cardBackground, borderColor: designColors.divider, color: designColors.textPrimary }]}
                   value={formData.storage_temperature}
                   onChangeText={(text) => setFormData((prev) => ({ ...prev, storage_temperature: text }))}
                   placeholder="e.g., 4"
@@ -794,26 +794,26 @@ const ItemsScreen = () => {
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Base Unit *</Text>
               <TouchableOpacity
-                style={styles.dropdownButton}
+                style={[styles.dropdownButton, { backgroundColor: designColors.cardBackground, borderColor: designColors.divider }]}
                 onPress={() => setShowBaseUnitDropdown(!showBaseUnitDropdown)}
               >
-                <Text style={styles.dropdownValue}>
+                <Text style={[styles.dropdownValue, { color: designColors.textPrimary }]}>
                   {formData.base_unit.charAt(0).toUpperCase() + formData.base_unit.slice(1)}
                 </Text>
                 <Icon name={showBaseUnitDropdown ? 'arrow-drop-up' : 'arrow-drop-down'} size={24} color={designColors.textSecondary} />
               </TouchableOpacity>
               {showBaseUnitDropdown && (
-                <View style={styles.dropdownMenu}>
+                <View style={[styles.dropdownMenu, { backgroundColor: designColors.cardBackground, borderColor: designColors.divider }]}>
                   {BASE_UNITS.map((unit) => (
                     <TouchableOpacity
                       key={unit}
-                      style={styles.dropdownItem}
+                      style={[styles.dropdownItem, { borderBottomColor: designColors.divider }]}
                       onPress={() => {
                         setFormData((prev) => ({ ...prev, base_unit: unit }));
                         setShowBaseUnitDropdown(false);
                       }}
                     >
-                      <Text style={styles.dropdownItemText}>
+                      <Text style={[styles.dropdownItemText, { color: designColors.textPrimary }]}>
                         {unit.charAt(0).toUpperCase() + unit.slice(1)}
                       </Text>
                     </TouchableOpacity>
@@ -842,10 +842,10 @@ const ItemsScreen = () => {
                 <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
                   <Text style={styles.inputLabel}>Packaging Unit</Text>
                   <TouchableOpacity
-                    style={styles.dropdownButton}
+                    style={[styles.dropdownButton, { backgroundColor: designColors.cardBackground, borderColor: designColors.divider }]}
                     onPress={() => setShowPackagingUnitDropdown(!showPackagingUnitDropdown)}
                   >
-                    <Text style={formData.packaging_unit ? styles.dropdownValue : styles.dropdownPlaceholder}>
+                    <Text style={[formData.packaging_unit ? styles.dropdownValue : styles.dropdownPlaceholder, { color: formData.packaging_unit ? designColors.textPrimary : designColors.textSecondary }]}>
                       {formData.packaging_unit 
                         ? formData.packaging_unit.charAt(0).toUpperCase() + formData.packaging_unit.slice(1)
                         : 'Select'
@@ -854,17 +854,17 @@ const ItemsScreen = () => {
                     <Icon name={showPackagingUnitDropdown ? 'arrow-drop-up' : 'arrow-drop-down'} size={24} color={designColors.textSecondary} />
                   </TouchableOpacity>
                   {showPackagingUnitDropdown && (
-                    <View style={styles.dropdownMenu}>
+                    <View style={[styles.dropdownMenu, { backgroundColor: designColors.cardBackground, borderColor: designColors.divider }]}>
                       {PACKAGING_UNITS.map((unit) => (
                         <TouchableOpacity
                           key={unit}
-                          style={styles.dropdownItem}
+                          style={[styles.dropdownItem, { borderBottomColor: designColors.divider }]}
                           onPress={() => {
                             setFormData((prev) => ({ ...prev, packaging_unit: unit }));
                             setShowPackagingUnitDropdown(false);
                           }}
                         >
-                          <Text style={styles.dropdownItemText}>
+                          <Text style={[styles.dropdownItemText, { color: designColors.textPrimary }]}>
                             {unit.charAt(0).toUpperCase() + unit.slice(1)}
                           </Text>
                         </TouchableOpacity>
@@ -877,7 +877,7 @@ const ItemsScreen = () => {
                 <View style={[styles.inputGroup, { flex: 1 }]}>
                   <Text style={styles.inputLabel}>Units/Package</Text>
                   <TextInput
-                    style={styles.textInput}
+                    style={[styles.textInput, { backgroundColor: designColors.cardBackground, borderColor: designColors.divider, color: designColors.textPrimary }]}
                     value={formData.units_per_package}
                     onChangeText={(text) => setFormData((prev) => ({ ...prev, units_per_package: text }))}
                     placeholder="e.g., 12"
@@ -894,7 +894,7 @@ const ItemsScreen = () => {
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Threshold Level *</Text>
               <TextInput
-                style={[styles.textInput, formErrors.threshold_level ? styles.textInputError : null]}
+                style={[styles.textInput, { backgroundColor: designColors.cardBackground, borderColor: designColors.divider, color: designColors.textPrimary }, formErrors.threshold_level ? styles.textInputError : null]}
                 value={formData.threshold_level}
                 onChangeText={(text) => {
                   setFormData((prev) => ({ ...prev, threshold_level: text }));
@@ -913,7 +913,7 @@ const ItemsScreen = () => {
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Low Level (Optional)</Text>
               <TextInput
-                style={styles.textInput}
+                style={[styles.textInput, { backgroundColor: designColors.cardBackground, borderColor: designColors.divider, color: designColors.textPrimary }]}
                 value={formData.low_level}
                 onChangeText={(text) => setFormData((prev) => ({ ...prev, low_level: text }))}
                 placeholder="Default: 5"
@@ -926,7 +926,7 @@ const ItemsScreen = () => {
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Critical Level (Optional)</Text>
               <TextInput
-                style={styles.textInput}
+                style={[styles.textInput, { backgroundColor: designColors.cardBackground, borderColor: designColors.divider, color: designColors.textPrimary }]}
                 value={formData.critical_level}
                 onChangeText={(text) => setFormData((prev) => ({ ...prev, critical_level: text }))}
                 placeholder="Default: 2"
@@ -970,21 +970,21 @@ const ItemsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: designColors.backgroundDark,
+    backgroundColor: staticDesignColors.backgroundDark,
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: designColors.backgroundDark,
+    backgroundColor: staticDesignColors.backgroundDark,
     justifyContent: 'center',
     alignItems: 'center',
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
   },
   headerSection: {
-    backgroundColor: designColors.surfaceDark,
+    backgroundColor: staticDesignColors.surfaceDark,
     padding: 16,
   },
   headerRow: {
@@ -995,7 +995,7 @@ const styles = StyleSheet.create({
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: designColors.primaryRed,
+    backgroundColor: staticDesignColors.primaryRed,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
@@ -1017,19 +1017,19 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: designColors.primaryRed,
-    backgroundColor: designColors.cardDark,
+    borderColor: staticDesignColors.primaryRed,
+    backgroundColor: staticDesignColors.cardDark,
     gap: 8,
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     paddingVertical: 0,
   },
   divider: {
     height: 1,
-    backgroundColor: designColors.divider,
+    backgroundColor: staticDesignColors.divider,
   },
   listContent: {
     padding: 16,
@@ -1038,12 +1038,12 @@ const styles = StyleSheet.create({
   listHeader: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     marginBottom: 16,
   },
   // Item Card - matching Android ItemTableRow
   itemCard: {
-    backgroundColor: designColors.cardDark,
+    backgroundColor: staticDesignColors.cardDark,
     borderRadius: 12,
     marginBottom: 12,
     padding: 16,
@@ -1083,11 +1083,11 @@ const styles = StyleSheet.create({
   itemName: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   itemCreatedDate: {
     fontSize: 12,
-    color: designColors.textMuted,
+    color: staticDesignColors.textMuted,
     marginTop: 2,
   },
   itemActions: {
@@ -1102,7 +1102,7 @@ const styles = StyleSheet.create({
   },
   itemDivider: {
     height: 1,
-    backgroundColor: designColors.divider,
+    backgroundColor: staticDesignColors.divider,
     marginVertical: 12,
   },
   itemDetails: {
@@ -1115,29 +1115,29 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: 14,
-    color: designColors.textMuted,
+    color: staticDesignColors.textMuted,
     fontWeight: '500',
   },
   detailValue: {
     fontSize: 13,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     flex: 1,
     textAlign: 'right',
     marginLeft: 12,
   },
   detailValueMuted: {
     fontSize: 13,
-    color: designColors.textMuted,
+    color: staticDesignColors.textMuted,
     fontStyle: 'italic',
   },
   categoryBadge: {
-    backgroundColor: designColors.primaryRed + '1A',
+    backgroundColor: staticDesignColors.primaryRed + '1A',
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 4,
   },
   categoryText: {
-    color: designColors.primaryRed,
+    color: staticDesignColors.primaryRed,
     fontSize: 13,
     fontWeight: '500',
   },
@@ -1149,7 +1149,7 @@ const styles = StyleSheet.create({
   thresholdValue: {
     fontSize: 14,
     fontWeight: '500',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   storageTempContainer: {
     flexDirection: 'row',
@@ -1159,7 +1159,7 @@ const styles = StyleSheet.create({
   storageTempValue: {
     fontSize: 14,
     fontWeight: '500',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -1168,7 +1168,7 @@ const styles = StyleSheet.create({
   emptyText: {
     marginTop: 16,
     fontSize: 16,
-    color: designColors.textMuted,
+    color: staticDesignColors.textMuted,
   },
   // Delete Dialog
   dialogOverlay: {
@@ -1179,7 +1179,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   dialogContent: {
-    backgroundColor: designColors.cardDark,
+    backgroundColor: staticDesignColors.cardDark,
     borderRadius: 16,
     padding: 24,
     width: '100%',
@@ -1189,12 +1189,12 @@ const styles = StyleSheet.create({
   dialogTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     marginTop: 12,
   },
   dialogMessage: {
     fontSize: 14,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
     textAlign: 'center',
     marginTop: 12,
     lineHeight: 20,
@@ -1210,13 +1210,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dialogButtonCancelText: {
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
     fontSize: 14,
     fontWeight: '600',
   },
   dialogButtonDelete: {
     flex: 1,
-    backgroundColor: designColors.deleteRed,
+    backgroundColor: staticDesignColors.deleteRed,
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
@@ -1229,7 +1229,7 @@ const styles = StyleSheet.create({
   // Modal
   modalContainer: {
     flex: 1,
-    backgroundColor: designColors.surfaceDark,
+    backgroundColor: staticDesignColors.surfaceDark,
   },
   modalHeader: {
     paddingTop: 60,
@@ -1239,11 +1239,11 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   modalDivider: {
     height: 1,
-    backgroundColor: designColors.divider,
+    backgroundColor: staticDesignColors.divider,
   },
   modalContent: {
     padding: 24,
@@ -1257,7 +1257,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 12,
     fontWeight: '500',
-    color: designColors.textMuted,
+    color: staticDesignColors.textMuted,
     marginBottom: 12,
     marginTop: 8,
   },
@@ -1267,18 +1267,18 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
     marginBottom: 8,
   },
   textInput: {
-    backgroundColor: designColors.cardDark,
+    backgroundColor: staticDesignColors.cardDark,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: designColors.divider,
+    borderColor: staticDesignColors.divider,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   textArea: {
     height: 90,
@@ -1294,17 +1294,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: designColors.cardDark,
+    backgroundColor: staticDesignColors.cardDark,
     borderWidth: 1,
-    borderColor: designColors.divider,
+    borderColor: staticDesignColors.divider,
   },
   categoryOptionActive: {
-    backgroundColor: designColors.primaryRed,
-    borderColor: designColors.primaryRed,
+    backgroundColor: staticDesignColors.primaryRed,
+    borderColor: staticDesignColors.primaryRed,
   },
   categoryOptionText: {
     fontSize: 14,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   categoryOptionTextActive: {
     color: '#FFFFFF',
@@ -1319,17 +1319,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: designColors.cardDark,
+    backgroundColor: staticDesignColors.cardDark,
     borderWidth: 1,
-    borderColor: designColors.divider,
+    borderColor: staticDesignColors.divider,
   },
   unitOptionActive: {
-    backgroundColor: designColors.primaryRed,
-    borderColor: designColors.primaryRed,
+    backgroundColor: staticDesignColors.primaryRed,
+    borderColor: staticDesignColors.primaryRed,
   },
   unitOptionText: {
     fontSize: 14,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   unitOptionTextActive: {
     color: '#FFFFFF',
@@ -1341,13 +1341,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   cancelButtonText: {
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
   },
   saveButton: {
-    backgroundColor: designColors.primaryRed,
+    backgroundColor: staticDesignColors.primaryRed,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
@@ -1364,10 +1364,10 @@ const styles = StyleSheet.create({
   },
   // Dropdown styles - matching Kotlin ExposedDropdownMenuBox
   dropdownButton: {
-    backgroundColor: designColors.cardDark,
+    backgroundColor: staticDesignColors.cardDark,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: designColors.divider,
+    borderColor: staticDesignColors.divider,
     paddingHorizontal: 14,
     paddingVertical: 14,
     flexDirection: 'row',
@@ -1376,17 +1376,17 @@ const styles = StyleSheet.create({
   },
   dropdownValue: {
     fontSize: 16,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   dropdownPlaceholder: {
     fontSize: 16,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
   },
   dropdownMenu: {
-    backgroundColor: designColors.cardDark,
+    backgroundColor: staticDesignColors.cardDark,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: designColors.divider,
+    borderColor: staticDesignColors.divider,
     marginTop: 4,
     overflow: 'hidden',
   },
@@ -1394,11 +1394,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: designColors.divider,
+    borderBottomColor: staticDesignColors.divider,
   },
   dropdownItemText: {
     fontSize: 16,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   // Checkbox styles - matching Kotlin Checkbox
   checkboxRow: {
@@ -1411,18 +1411,18 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 4,
     borderWidth: 2,
-    borderColor: designColors.textSecondary,
+    borderColor: staticDesignColors.textSecondary,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   checkboxChecked: {
-    backgroundColor: designColors.primaryRed,
-    borderColor: designColors.primaryRed,
+    backgroundColor: staticDesignColors.primaryRed,
+    borderColor: staticDesignColors.primaryRed,
   },
   checkboxLabel: {
     fontSize: 14,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   // Packaging row
   packagingRow: {
@@ -1440,11 +1440,11 @@ const styles = StyleSheet.create({
   },
   // Error styles
   textInputError: {
-    borderColor: designColors.deleteRed,
+    borderColor: staticDesignColors.deleteRed,
   },
   errorText: {
     fontSize: 12,
-    color: designColors.deleteRed,
+    color: staticDesignColors.deleteRed,
     marginTop: 4,
   },
   // Image picker styles
@@ -1479,16 +1479,16 @@ const styles = StyleSheet.create({
     width: 150,
     height: 150,
     borderRadius: 12,
-    backgroundColor: designColors.cardDark,
+    backgroundColor: staticDesignColors.cardDark,
     borderWidth: 2,
-    borderColor: designColors.divider,
+    borderColor: staticDesignColors.divider,
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
   },
   imagePlaceholderText: {
     fontSize: 12,
-    color: designColors.textMuted,
+    color: staticDesignColors.textMuted,
     marginTop: 8,
   },
   imageButtonsRow: {
@@ -1500,7 +1500,7 @@ const styles = StyleSheet.create({
   pickImageButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: designColors.primaryRed,
+    backgroundColor: staticDesignColors.primaryRed,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
@@ -1519,7 +1519,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   removeImageText: {
-    color: designColors.deleteRed,
+    color: staticDesignColors.deleteRed,
     fontSize: 13,
   },
 });

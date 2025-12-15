@@ -168,3 +168,126 @@ export const getThemeColors = (isDark: boolean): ThemeColors => {
     info: Colors.info,
   };
 };
+
+// Design colors matching Kotlin app with light/dark mode support
+export interface DesignColors {
+  // Background colors
+  background: string;
+  backgroundDark: string;
+  surface: string;
+  surfaceDark: string;
+  surfaceVariant: string;
+  cardBackground: string;
+  cardDark: string;
+  
+  // Primary colors
+  primaryRed: string;
+  successGreen: string;
+  warningOrange: string;
+  dangerRed: string;
+  errorRed: string;
+  criticalRed: string;
+  deleteRed: string;
+  deepOrange: string;
+  infoBlue: string;
+  infoCyan: string;
+  blueAccent: string;
+  purpleAccent: string;
+  
+  // Text colors
+  textPrimary: string;
+  textSecondary: string;
+  textMuted: string;
+  
+  // Border and divider
+  border: string;
+  borderLight: string;
+  divider: string;
+  
+  // Shadow (for light mode)
+  shadowColor: string;
+  shadowOpacity: number;
+  shadowRadius: number;
+  shadowOffset: { width: number; height: number };
+  elevation: number;
+}
+
+export const getDesignColors = (isDark: boolean): DesignColors => {
+  if (isDark) {
+    return {
+      // Dark mode colors
+      background: '#121212',
+      backgroundDark: '#121212',
+      surface: '#1E1E1E',
+      surfaceDark: '#1E1E1E',
+      surfaceVariant: '#2B2B2B',
+      cardBackground: '#1A1A1A',
+      cardDark: '#252525',
+      
+      primaryRed: '#E6002A',
+      successGreen: '#10B981',
+      warningOrange: '#FFA726',
+      dangerRed: '#EF4444',
+      errorRed: '#E53935',
+      criticalRed: '#DC2626',
+      deleteRed: '#EF4444',
+      deepOrange: '#FF7043',
+      infoBlue: '#2196F3',
+      infoCyan: '#00BCD4',
+      blueAccent: '#3B82F6',
+      purpleAccent: '#8B5CF6',
+      
+      textPrimary: '#FFFFFF',
+      textSecondary: '#B3B3B3',
+      textMuted: '#808080',
+      
+      border: 'rgba(255, 255, 255, 0.1)',
+      borderLight: 'rgba(255, 255, 255, 0.1)',
+      divider: 'rgba(255, 255, 255, 0.12)',
+      
+      shadowColor: 'transparent',
+      shadowOpacity: 0,
+      shadowRadius: 0,
+      shadowOffset: { width: 0, height: 0 },
+      elevation: 0,
+    };
+  } else {
+    return {
+      // Light mode colors with better contrast
+      background: '#F5F5F5',
+      backgroundDark: '#F5F5F5',
+      surface: '#EBEBEB',
+      surfaceDark: '#EBEBEB',
+      surfaceVariant: '#E0E0E0',
+      cardBackground: '#FFFFFF',
+      cardDark: '#F8F8F8',
+      
+      primaryRed: '#E6002A',
+      successGreen: '#10B981',
+      warningOrange: '#FFA726',
+      dangerRed: '#EF4444',
+      errorRed: '#E53935',
+      criticalRed: '#DC2626',
+      deleteRed: '#EF4444',
+      deepOrange: '#FF7043',
+      infoBlue: '#2196F3',
+      infoCyan: '#00BCD4',
+      blueAccent: '#3B82F6',
+      purpleAccent: '#8B5CF6',
+      
+      textPrimary: '#1A1A1A',
+      textSecondary: '#4A4A4A',
+      textMuted: '#808080',
+      
+      border: '#E0E0E0',
+      borderLight: 'rgba(0, 0, 0, 0.08)',
+      divider: 'rgba(0, 0, 0, 0.12)',
+      
+      shadowColor: '#000',
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 3,
+    };
+  }
+};

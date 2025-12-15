@@ -14,12 +14,13 @@ import Toast from 'react-native-toast-message';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
 import apiClient from '../../api/ApiClient';
+import { useTheme } from '../../theme/ThemeContext';
 import { AnalyticsData } from '../../models';
 
 const { width: screenWidth } = Dimensions.get('window');
 
-// Design colors matching Kotlin app
-const designColors = {
+// Static design colors for StyleSheet (dynamic colors applied inline)
+const staticDesignColors = {
   backgroundDark: '#121212',
   surfaceDark: '#1E1E1E',
   cardDark: '#252525',
@@ -80,16 +81,19 @@ const MetricCard = ({
   subtitle: string;
   icon: string;
   color: string;
-}) => (
-  <View style={[styles.metricCard, { backgroundColor: designColors.cardDark }]}>
+}) => {
+  const { designColors } = useTheme();
+  return (
+  <View style={[styles.metricCard, { backgroundColor: designColors.cardBackground }]}>
     <View style={styles.metricHeader}>
-      <Text style={styles.metricTitle}>{title}</Text>
+      <Text style={[styles.metricTitle, { color: designColors.textSecondary }]}>{title}</Text>
       <Icon name={icon} size={20} color={color} />
     </View>
     <Text style={[styles.metricValue, { color: designColors.textPrimary }]}>{value}</Text>
-    <Text style={styles.metricSubtitle}>{subtitle}</Text>
+    <Text style={[styles.metricSubtitle, { color: designColors.textSecondary }]}>{subtitle}</Text>
   </View>
-);
+  );
+};
 
 // Category Distribution Chart - Simple horizontal bars with legend
 const PieChartLegend = ({
@@ -99,8 +103,9 @@ const PieChartLegend = ({
   data: CategoryItem[];
   onSegmentClick: (item: CategoryItem) => void;
 }) => {
+  const { designColors } = useTheme();
   const total = data.reduce((sum, item) => sum + item.value, 0);
-  if (total === 0) return <Text style={styles.noDataText}>No data</Text>;
+  if (total === 0) return <Text style={[styles.noDataText, { color: designColors.textSecondary }]}>No data</Text>;
   
   // Calculate percentages
   const segments = data.map((item) => ({
@@ -112,8 +117,8 @@ const PieChartLegend = ({
     <View style={styles.categoryChartContainer}>
       {/* Total indicator */}
       <View style={styles.categoryTotalRow}>
-        <Text style={styles.categoryTotalLabel}>Total Items</Text>
-        <Text style={styles.categoryTotalValue}>{total}</Text>
+        <Text style={[styles.categoryTotalLabel, { color: designColors.textSecondary }]}>Total Items</Text>
+        <Text style={[styles.categoryTotalValue, { color: designColors.textPrimary }]}>{total}</Text>
       </View>
       
       {/* Category bars */}
@@ -125,10 +130,10 @@ const PieChartLegend = ({
         >
           <View style={styles.categoryBarLeft}>
             <View style={[styles.categoryDot, { backgroundColor: item.color }]} />
-            <Text style={styles.categoryName} numberOfLines={1}>{item.name}</Text>
+            <Text style={[styles.categoryName, { color: designColors.textPrimary }]} numberOfLines={1}>{item.name}</Text>
           </View>
           <View style={styles.categoryBarRight}>
-            <View style={styles.categoryBarTrack}>
+            <View style={[styles.categoryBarTrack, { backgroundColor: designColors.surfaceVariant }]}>
               <View 
                 style={[
                   styles.categoryBarFill, 
@@ -136,7 +141,7 @@ const PieChartLegend = ({
                 ]} 
               />
             </View>
-            <Text style={styles.categoryBarValue}>{item.value}</Text>
+            <Text style={[styles.categoryBarValue, { color: designColors.textPrimary }]}>{item.value}</Text>
           </View>
         </TouchableOpacity>
       ))}
@@ -145,19 +150,22 @@ const PieChartLegend = ({
 };
 
 // Category Breakdown List
-const CategoryBreakdownList = ({ data }: { data: CategoryItem[] }) => (
+const CategoryBreakdownList = ({ data }: { data: CategoryItem[] }) => {
+  const { designColors } = useTheme();
+  return (
   <View style={styles.breakdownList}>
     {data.map((item, index) => (
       <View key={index} style={styles.breakdownItem}>
         <View style={styles.breakdownItemLeft}>
           <View style={[styles.colorDot, { backgroundColor: item.color }]} />
-          <Text style={styles.breakdownName}>{item.name}</Text>
+          <Text style={[styles.breakdownName, { color: designColors.textPrimary }]}>{item.name}</Text>
         </View>
-        <Text style={styles.breakdownValue}>{item.value}</Text>
+        <Text style={[styles.breakdownValue, { color: designColors.textPrimary }]}>{item.value}</Text>
       </View>
     ))}
   </View>
-);
+  );
+};
 
 // Simple Line Chart
 const LineChart = ({
@@ -167,7 +175,8 @@ const LineChart = ({
   data: MovementData[];
   onPointClick: (item: MovementData) => void;
 }) => {
-  if (data.length === 0) return <Text style={styles.noDataText}>No movement data</Text>;
+  const { designColors } = useTheme();
+  if (data.length === 0) return <Text style={[styles.noDataText, { color: designColors.textSecondary }]}>No movement data</Text>;
   
   const maxValue = Math.max(
     ...data.map(d => Math.max(d.stockIn, d.stockOut)),
@@ -182,12 +191,12 @@ const LineChart = ({
       {/* Legend */}
       <View style={styles.chartLegend}>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: designColors.successGreen }]} />
-          <Text style={styles.legendText}>Stock In</Text>
+          <View style={[styles.legendDot, { backgroundColor: staticDesignColors.successGreen }]} />
+          <Text style={[styles.legendText, { color: designColors.textPrimary }]}>Stock In</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: designColors.dangerRed }]} />
-          <Text style={styles.legendText}>Stock Out</Text>
+          <View style={[styles.legendDot, { backgroundColor: staticDesignColors.dangerRed }]} />
+          <Text style={[styles.legendText, { color: designColors.textPrimary }]}>Stock Out</Text>
         </View>
       </View>
       
@@ -196,7 +205,7 @@ const LineChart = ({
         {/* Y-axis labels */}
         <View style={styles.yAxisLabels}>
           {[0, 1, 2, 3, 4].map(i => (
-            <Text key={i} style={styles.axisLabel}>
+            <Text key={i} style={[styles.axisLabel, { color: designColors.textSecondary }]}>
               {Math.round(maxValue * (4 - i) / 4)}
             </Text>
           ))}
@@ -222,7 +231,7 @@ const LineChart = ({
                   style={[
                     styles.dataPoint,
                     { 
-                      backgroundColor: designColors.successGreen,
+                      backgroundColor: staticDesignColors.successGreen,
                       left: x - 5,
                       top: yIn - 5,
                     }
@@ -233,7 +242,7 @@ const LineChart = ({
                   style={[
                     styles.dataPoint,
                     { 
-                      backgroundColor: designColors.dangerRed,
+                      backgroundColor: staticDesignColors.dangerRed,
                       left: x - 5,
                       top: yOut - 5,
                     }
@@ -265,6 +274,7 @@ const BarChart = ({
   data: TopItem[];
   onBarClick: (item: TopItem) => void;
 }) => {
+  const { designColors } = useTheme();
   if (data.length === 0) return <Text style={styles.noDataText}>No data</Text>;
   
   const maxValue = Math.max(...data.map(d => d.movements), 1);
@@ -275,7 +285,7 @@ const BarChart = ({
       {/* Y-Axis */}
       <View style={styles.barYAxis}>
         {yAxisLabels.reverse().map((val, i) => (
-          <Text key={i} style={styles.barAxisLabel}>{val}</Text>
+          <Text key={i} style={[styles.barAxisLabel, { color: designColors.textSecondary }]}>{val}</Text>
         ))}
       </View>
       {/* Bars */}
@@ -295,7 +305,7 @@ const BarChart = ({
               onPress={() => onBarClick(item)}
             >
               <Text style={styles.barValue}>{item.movements}</Text>
-              <View style={[styles.bar, { height: barHeight, backgroundColor: designColors.primaryRed }]} />
+              <View style={[styles.bar, { height: barHeight, backgroundColor: staticDesignColors.primaryRed }]} />
               <Text style={styles.barLabel} numberOfLines={2}>{item.name}</Text>
             </TouchableOpacity>
           );
@@ -329,7 +339,7 @@ const UsageBarChart = ({
             onPress={() => onBarClick(item)}
           >
             <Text style={styles.usageBarValue}>{item.usage}</Text>
-            <View style={[styles.usageBar, { height: barHeight, backgroundColor: designColors.successGreen }]} />
+            <View style={[styles.usageBar, { height: barHeight, backgroundColor: staticDesignColors.successGreen }]} />
             <Text style={styles.usageBarLabel} numberOfLines={1}>{item.period}</Text>
           </TouchableOpacity>
         );
@@ -339,6 +349,7 @@ const UsageBarChart = ({
 };
 
 const AnalyticsScreen: React.FC = () => {
+  const { isDark, designColors } = useTheme();
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
   const [usageData, setUsageData] = useState<UsageAnalyticsItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -428,12 +439,12 @@ const AnalyticsScreen: React.FC = () => {
     // First try categoryBreakdown, then compute from items
     if (analyticsData?.categoryBreakdown && Array.isArray(analyticsData.categoryBreakdown)) {
       const colors = [
-        designColors.blueAccent,
-        designColors.dangerRed,
-        designColors.successGreen,
-        designColors.warningOrange,
-        designColors.purpleAccent,
-        designColors.pinkAccent,
+        staticDesignColors.blueAccent,
+        staticDesignColors.dangerRed,
+        staticDesignColors.successGreen,
+        staticDesignColors.warningOrange,
+        staticDesignColors.purpleAccent,
+        staticDesignColors.pinkAccent,
       ];
       return analyticsData.categoryBreakdown.map((cat, index) => ({
         name: cat.category,
@@ -453,12 +464,12 @@ const AnalyticsScreen: React.FC = () => {
     });
     
     const colors = [
-      designColors.blueAccent,
-      designColors.dangerRed,
-      designColors.successGreen,
-      designColors.warningOrange,
-      designColors.purpleAccent,
-      designColors.pinkAccent,
+      staticDesignColors.blueAccent,
+      staticDesignColors.dangerRed,
+      staticDesignColors.successGreen,
+      staticDesignColors.warningOrange,
+      staticDesignColors.purpleAccent,
+      staticDesignColors.pinkAccent,
     ];
     return Object.entries(categoryCount).map(([name, value], index) => ({
       name,
@@ -571,7 +582,7 @@ const AnalyticsScreen: React.FC = () => {
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={[styles.loadingContainer, { backgroundColor: designColors.background }]}>
         <ActivityIndicator size="large" color={designColors.primaryRed} />
       </View>
     );
@@ -579,7 +590,7 @@ const AnalyticsScreen: React.FC = () => {
 
   return (
     <ScrollView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: designColors.background }]}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
@@ -589,7 +600,7 @@ const AnalyticsScreen: React.FC = () => {
       }
     >
       {/* Page Title */}
-      <Text style={styles.pageTitle}>Analytics Dashboard</Text>
+      <Text style={[styles.pageTitle, { color: designColors.textPrimary }]}>Analytics Dashboard</Text>
 
       {/* Key Metrics - 2x2 Grid */}
       <View style={styles.metricsRow}>
@@ -598,14 +609,14 @@ const AnalyticsScreen: React.FC = () => {
           value={`${analyticsData?.totalItems || 0}`}
           subtitle="Items in inventory"
           icon="inventory"
-          color={designColors.blueAccent}
+          color={staticDesignColors.blueAccent}
         />
         <MetricCard
           title="Low Stock"
           value={`${analyticsData?.lowStockItems || 0}`}
           subtitle="Items low on stock"
           icon="warning"
-          color={designColors.warningOrange}
+          color={staticDesignColors.warningOrange}
         />
       </View>
       <View style={styles.metricsRow}>
@@ -614,22 +625,22 @@ const AnalyticsScreen: React.FC = () => {
           value={`${analyticsData?.activeUsers || 0}`}
           subtitle="Users this month"
           icon="person"
-          color={designColors.successGreen}
+          color={staticDesignColors.successGreen}
         />
         <MetricCard
           title="Movements"
           value={`${(analyticsData as any)?.stockMovements || analyticsData?.stockMovements24h || 0}`}
           subtitle="This month"
           icon="trending-up"
-          color={designColors.purpleAccent}
+          color={staticDesignColors.purpleAccent}
         />
       </View>
 
       {/* Charts Section - Side by Side */}
       <View style={styles.chartsRow}>
         {/* Category Pie Chart */}
-        <View style={[styles.chartCard, { flex: 1, marginRight: 6 }]}>
-          <Text style={styles.chartTitle}>Category Distribution</Text>
+        <View style={[styles.chartCard, { backgroundColor: designColors.cardBackground, flex: 1, marginRight: 6, ...(isDark ? {} : { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }) }]}>
+          <Text style={[styles.chartTitle, { color: designColors.textPrimary }]}>Category Distribution</Text>
           {categoryData.length > 0 ? (
             <PieChartLegend
               data={categoryData}
@@ -641,19 +652,19 @@ const AnalyticsScreen: React.FC = () => {
         </View>
 
         {/* Category Breakdown List */}
-        <View style={[styles.chartCard, { flex: 1, marginLeft: 6 }]}>
-          <Text style={styles.chartTitle}>Category Breakdown</Text>
+        <View style={[styles.chartCard, { backgroundColor: designColors.cardBackground, flex: 1, marginLeft: 6, ...(isDark ? {} : { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }) }]}>
+          <Text style={[styles.chartTitle, { color: designColors.textPrimary }]}>Category Breakdown</Text>
           {categoryData.length > 0 ? (
             <CategoryBreakdownList data={categoryData} />
           ) : (
-            <Text style={styles.noDataText}>No data</Text>
+            <Text style={[styles.noDataText, { color: designColors.textSecondary }]}>No data</Text>
           )}
         </View>
       </View>
 
       {/* Movement Trends Line Chart */}
-      <View style={styles.chartCard}>
-        <Text style={styles.chartTitle}>Stock Movement Trends (Last 7 Days)</Text>
+      <View style={[styles.chartCard, { backgroundColor: designColors.cardBackground, ...(isDark ? {} : { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }) }]}>
+        <Text style={[styles.chartTitle, { color: designColors.textPrimary }]}>Stock Movement Trends (Last 7 Days)</Text>
         <LineChart
           data={movementTrends}
           onPointClick={(item) => showToast('info', item.date, `In: ${item.stockIn}, Out: ${item.stockOut}`)}
@@ -661,8 +672,8 @@ const AnalyticsScreen: React.FC = () => {
       </View>
 
       {/* Top 5 Most Active Items Bar Chart */}
-      <View style={styles.chartCard}>
-        <Text style={styles.chartTitle}>Top 5 Most Active Items</Text>
+      <View style={[styles.chartCard, { backgroundColor: designColors.cardBackground, ...(isDark ? {} : { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }) }]}>
+        <Text style={[styles.chartTitle, { color: designColors.textPrimary }]}>Top 5 Most Active Items</Text>
         <BarChart
           data={topItems}
           onBarClick={(item) => showToast('info', item.name, `${item.movements} movements`)}
@@ -670,28 +681,28 @@ const AnalyticsScreen: React.FC = () => {
       </View>
 
       {/* Item Stock Usage Analysis Section */}
-      <View style={styles.chartCard}>
+      <View style={[styles.chartCard, { backgroundColor: designColors.cardBackground, ...(isDark ? {} : { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }) }]}>
         <View style={styles.sectionHeader}>
-          <Icon name="trending-up" size={20} color={designColors.blueAccent} />
-          <Text style={styles.chartTitle}>Item Stock Usage Analysis</Text>
+          <Icon name="trending-up" size={20} color={staticDesignColors.blueAccent} />
+          <Text style={[styles.chartTitle, { color: designColors.textPrimary }]}>Item Stock Usage Analysis</Text>
         </View>
 
         {/* Item Dropdown */}
         <TouchableOpacity
-          style={styles.dropdown}
+          style={[styles.dropdown, { backgroundColor: designColors.cardBackground, borderColor: designColors.borderLight }]}
           onPress={() => setShowItemDropdown(true)}
         >
-          <Text style={styles.dropdownText}>{selectedItemName}</Text>
+          <Text style={[styles.dropdownText, { color: designColors.textPrimary }]}>{selectedItemName}</Text>
           <Icon name="arrow-drop-down" size={24} color={designColors.textSecondary} />
         </TouchableOpacity>
 
         {/* Period Dropdown and Generate Button Row */}
         <View style={styles.rowContainer}>
           <TouchableOpacity
-            style={[styles.dropdown, { flex: 1, marginRight: 8 }]}
+            style={[styles.dropdown, { flex: 1, marginRight: 8, backgroundColor: designColors.cardBackground, borderColor: designColors.borderLight }]}
             onPress={() => setShowItemPeriodDropdown(true)}
           >
-            <Text style={styles.dropdownText}>{itemUsagePeriod}</Text>
+            <Text style={[styles.dropdownText, { color: designColors.textPrimary }]}>{itemUsagePeriod}</Text>
             <Icon name="arrow-drop-down" size={24} color={designColors.textSecondary} />
           </TouchableOpacity>
 
@@ -714,7 +725,7 @@ const AnalyticsScreen: React.FC = () => {
         {/* Show item usage chart if data available */}
         {itemUsageData.length > 0 && (
           <View style={{ marginTop: 16 }}>
-            <Text style={[styles.chartSubtitle, { color: designColors.primaryRed }]}>
+            <Text style={[styles.chartSubtitle, { color: staticDesignColors.primaryRed }]}>
               {selectedItemName} - Usage ({itemUsagePeriod})
             </Text>
             <UsageBarChart
@@ -726,17 +737,17 @@ const AnalyticsScreen: React.FC = () => {
       </View>
 
       {/* Stock Usage Comparison */}
-      <View style={styles.chartCard}>
+      <View style={[styles.chartCard, { backgroundColor: designColors.cardBackground, ...(isDark ? {} : { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }) }]}>
         <View style={styles.sectionHeader}>
-          <Icon name="event" size={20} color={designColors.successGreen} />
-          <Text style={styles.chartTitle}>Stock Usage ({selectedPeriod})</Text>
+          <Icon name="event" size={20} color={staticDesignColors.successGreen} />
+          <Text style={[styles.chartTitle, { color: designColors.textPrimary }]}>Stock Usage ({selectedPeriod})</Text>
         </View>
 
         <TouchableOpacity
-          style={styles.dropdown}
+          style={[styles.dropdown, { backgroundColor: designColors.cardBackground, borderColor: designColors.borderLight }]}
           onPress={() => setShowPeriodDropdown(true)}
         >
-          <Text style={styles.dropdownText}>{selectedPeriod}</Text>
+          <Text style={[styles.dropdownText, { color: designColors.textPrimary }]}>{selectedPeriod}</Text>
           <Icon name="arrow-drop-down" size={24} color={designColors.textSecondary} />
         </TouchableOpacity>
 
@@ -762,20 +773,20 @@ const AnalyticsScreen: React.FC = () => {
           activeOpacity={1}
           onPress={() => setShowItemDropdown(false)}
         >
-          <View style={styles.dropdownModal}>
-            <Text style={styles.dropdownModalTitle}>Select Item</Text>
+          <View style={[styles.dropdownModal, { backgroundColor: designColors.surfaceVariant }]}>
+            <Text style={[styles.dropdownModalTitle, { color: designColors.textPrimary }]}>Select Item</Text>
             <ScrollView style={{ maxHeight: 300 }}>
               {items.map((item) => (
                 <TouchableOpacity
                   key={item.id}
-                  style={styles.dropdownOption}
+                  style={[styles.dropdownOption, { borderBottomColor: designColors.borderLight }]}
                   onPress={() => {
                     setSelectedItemId(item.id);
                     setSelectedItemName(item.name);
                     setShowItemDropdown(false);
                   }}
                 >
-                  <Text style={styles.dropdownOptionText}>{item.name}</Text>
+                  <Text style={[styles.dropdownOptionText, { color: designColors.textPrimary }]}>{item.name}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -795,18 +806,18 @@ const AnalyticsScreen: React.FC = () => {
           activeOpacity={1}
           onPress={() => setShowItemPeriodDropdown(false)}
         >
-          <View style={styles.dropdownModal}>
-            <Text style={styles.dropdownModalTitle}>Select Period</Text>
+          <View style={[styles.dropdownModal, { backgroundColor: designColors.surfaceVariant }]}>
+            <Text style={[styles.dropdownModalTitle, { color: designColors.textPrimary }]}>Select Period</Text>
             {['Daily', 'Monthly', 'Yearly'].map((period) => (
               <TouchableOpacity
                 key={period}
-                style={styles.dropdownOption}
+                style={[styles.dropdownOption, { borderBottomColor: designColors.borderLight }]}
                 onPress={() => {
                   setItemUsagePeriod(period);
                   setShowItemPeriodDropdown(false);
                 }}
               >
-                <Text style={styles.dropdownOptionText}>{period}</Text>
+                <Text style={[styles.dropdownOptionText, { color: designColors.textPrimary }]}>{period}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -825,18 +836,18 @@ const AnalyticsScreen: React.FC = () => {
           activeOpacity={1}
           onPress={() => setShowPeriodDropdown(false)}
         >
-          <View style={styles.dropdownModal}>
-            <Text style={styles.dropdownModalTitle}>Select Period</Text>
+          <View style={[styles.dropdownModal, { backgroundColor: designColors.surfaceVariant }]}>
+            <Text style={[styles.dropdownModalTitle, { color: designColors.textPrimary }]}>Select Period</Text>
             {['Daily', 'Monthly', 'Yearly'].map((period) => (
               <TouchableOpacity
                 key={period}
-                style={styles.dropdownOption}
+                style={[styles.dropdownOption, { borderBottomColor: designColors.borderLight }]}
                 onPress={() => {
                   setSelectedPeriod(period);
                   setShowPeriodDropdown(false);
                 }}
               >
-                <Text style={styles.dropdownOptionText}>{period}</Text>
+                <Text style={[styles.dropdownOptionText, { color: designColors.textPrimary }]}>{period}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -851,19 +862,19 @@ const AnalyticsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: designColors.backgroundDark,
+    backgroundColor: staticDesignColors.backgroundDark,
     padding: 16,
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: designColors.backgroundDark,
+    backgroundColor: staticDesignColors.backgroundDark,
     justifyContent: 'center',
     alignItems: 'center',
   },
   pageTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     marginBottom: 16,
   },
   metricsRow: {
@@ -883,7 +894,7 @@ const styles = StyleSheet.create({
   },
   metricTitle: {
     fontSize: 12,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
   },
   metricValue: {
     fontSize: 28,
@@ -892,7 +903,7 @@ const styles = StyleSheet.create({
   },
   metricSubtitle: {
     fontSize: 12,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
     marginTop: 2,
   },
   chartsRow: {
@@ -900,7 +911,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   chartCard: {
-    backgroundColor: designColors.surfaceDark,
+    backgroundColor: staticDesignColors.surfaceDark,
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -908,7 +919,7 @@ const styles = StyleSheet.create({
   chartTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     marginBottom: 16,
   },
   chartSubtitle: {
@@ -923,7 +934,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   noDataText: {
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
     textAlign: 'center',
     padding: 20,
   },
@@ -937,17 +948,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: designColors.borderLight,
+    borderBottomColor: staticDesignColors.borderLight,
     marginBottom: 4,
   },
   categoryTotalLabel: {
     fontSize: 14,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
   },
   categoryTotalValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   categoryBarRow: {
     flexDirection: 'row',
@@ -968,7 +979,7 @@ const styles = StyleSheet.create({
   },
   categoryName: {
     fontSize: 13,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     flex: 1,
   },
   categoryBarRight: {
@@ -980,7 +991,7 @@ const styles = StyleSheet.create({
   categoryBarTrack: {
     flex: 1,
     height: 8,
-    backgroundColor: designColors.cardDark,
+    backgroundColor: staticDesignColors.cardDark,
     borderRadius: 4,
     overflow: 'hidden',
   },
@@ -991,7 +1002,7 @@ const styles = StyleSheet.create({
   categoryBarValue: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     width: 30,
     textAlign: 'right',
   },
@@ -1012,7 +1023,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: designColors.cardDark,
+    backgroundColor: staticDesignColors.cardDark,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
@@ -1024,7 +1035,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: designColors.surfaceDark,
+    backgroundColor: staticDesignColors.surfaceDark,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
@@ -1032,11 +1043,11 @@ const styles = StyleSheet.create({
   pieCenterText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   pieCenterLabel: {
     fontSize: 10,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
   },
   pieLegend: {
     flex: 1,
@@ -1056,12 +1067,12 @@ const styles = StyleSheet.create({
   pieLegendText: {
     flex: 1,
     fontSize: 12,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   pieLegendValue: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
   },
   pieVisual: {
     width: 160,
@@ -1098,12 +1109,12 @@ const styles = StyleSheet.create({
   },
   breakdownName: {
     fontSize: 12,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   breakdownValue: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   lineChartContainer: {
     marginTop: 8,
@@ -1126,7 +1137,7 @@ const styles = StyleSheet.create({
   },
   legendText: {
     fontSize: 12,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     fontWeight: '600',
   },
   chartArea: {
@@ -1156,7 +1167,6 @@ const styles = StyleSheet.create({
   },
   axisLabel: {
     fontSize: 10,
-    color: designColors.textSecondary,
   },
   dataPoint: {
     position: 'absolute',
@@ -1178,7 +1188,6 @@ const styles = StyleSheet.create({
   },
   barAxisLabel: {
     fontSize: 10,
-    color: designColors.textSecondary,
   },
   barGridLine: {
     position: 'absolute',
@@ -1209,12 +1218,12 @@ const styles = StyleSheet.create({
   barValue: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: designColors.primaryRed,
+    color: staticDesignColors.primaryRed,
     marginBottom: 4,
   },
   barLabel: {
     fontSize: 10,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
     textAlign: 'center',
     height: 30,
   },
@@ -1238,19 +1247,19 @@ const styles = StyleSheet.create({
   usageBarValue: {
     fontSize: 11,
     fontWeight: 'bold',
-    color: designColors.successGreen,
+    color: staticDesignColors.successGreen,
     marginBottom: 4,
   },
   usageBarLabel: {
     fontSize: 10,
-    color: designColors.textSecondary,
+    color: staticDesignColors.textSecondary,
     textAlign: 'center',
   },
   dropdown: {
-    backgroundColor: designColors.cardDark,
+    backgroundColor: staticDesignColors.cardDark,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: designColors.borderLight,
+    borderColor: staticDesignColors.borderLight,
     paddingHorizontal: 16,
     paddingVertical: 14,
     flexDirection: 'row',
@@ -1260,14 +1269,14 @@ const styles = StyleSheet.create({
   },
   dropdownText: {
     fontSize: 14,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
   rowContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   generateButton: {
-    backgroundColor: designColors.primaryRed,
+    backgroundColor: staticDesignColors.primaryRed,
     paddingHorizontal: 24,
     paddingVertical: 14,
     borderRadius: 8,
@@ -1289,7 +1298,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   dropdownModal: {
-    backgroundColor: designColors.surfaceDark,
+    backgroundColor: staticDesignColors.surfaceDark,
     borderRadius: 12,
     padding: 16,
     width: '100%',
@@ -1298,7 +1307,7 @@ const styles = StyleSheet.create({
   dropdownModalTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
     marginBottom: 16,
     textAlign: 'center',
   },
@@ -1306,11 +1315,11 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: designColors.borderLight,
+    borderBottomColor: staticDesignColors.borderLight,
   },
   dropdownOptionText: {
     fontSize: 14,
-    color: designColors.textPrimary,
+    color: staticDesignColors.textPrimary,
   },
 });
 

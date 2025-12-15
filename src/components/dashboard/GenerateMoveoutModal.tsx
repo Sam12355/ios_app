@@ -16,8 +16,9 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 
 import apiClient from '../../api/ApiClient';
 import { StockItem } from '../../models';
+import { useTheme } from '../../theme/ThemeContext';
 
-// Design System Colors
+// Static colors for StyleSheet (fallback - these are overridden by inline styles using designColors)
 const colors = {
   primaryRed: '#E6002A',
   backgroundDark: '#121212',
@@ -51,6 +52,9 @@ const GenerateMoveoutModal: React.FC<GenerateMoveoutModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  // Theme
+  const { designColors, isDark } = useTheme();
+  
   // State
   const [availableStock, setAvailableStock] = useState<StockItem[]>([]);
   const [selectedItems, setSelectedItems] = useState<StockItem[]>([]);
@@ -214,19 +218,19 @@ const GenerateMoveoutModal: React.FC<GenerateMoveoutModalProps> = ({
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.modalOverlay}
       >
-        <View style={styles.modalContent}>
+        <View style={[styles.modalContent, { backgroundColor: designColors.cardBackground }]}>
           {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>Generate Moveout List</Text>
+          <View style={[styles.header, { borderBottomColor: designColors.borderLight }]}>
+            <Text style={[styles.headerTitle, { color: designColors.textPrimary }]}>Generate Moveout List</Text>
             <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Icon name="close" size={24} color={colors.textPrimary} />
+              <Icon name="close" size={24} color={designColors.textPrimary} />
             </TouchableOpacity>
           </View>
 
           {isLoading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primaryRed} />
-              <Text style={styles.loadingText}>Loading stock data...</Text>
+              <ActivityIndicator size="large" color={designColors.primaryRed} />
+              <Text style={[styles.loadingText, { color: designColors.textSecondary }]}>Loading stock data...</Text>
             </View>
           ) : (
             <ScrollView 
@@ -235,15 +239,15 @@ const GenerateMoveoutModal: React.FC<GenerateMoveoutModalProps> = ({
               showsVerticalScrollIndicator={false}
             >
               {/* Select Items Section */}
-              <Text style={styles.sectionLabel}>Select Items</Text>
+              <Text style={[styles.sectionLabel, { color: designColors.textSecondary }]}>Select Items</Text>
 
               {/* Search Input with Red Border */}
-              <View style={styles.searchContainer}>
-                <Icon name="search" size={20} color={colors.textMuted} style={styles.searchIcon} />
+              <View style={[styles.searchContainer, { backgroundColor: designColors.surfaceVariant, borderColor: designColors.primaryRed }]}>
+                <Icon name="search" size={20} color={designColors.textMuted} style={styles.searchIcon} />
                 <TextInput
-                  style={styles.searchInput}
+                  style={[styles.searchInput, { color: designColors.textPrimary }]}
                   placeholder="Search Items"
-                  placeholderTextColor={colors.textMuted}
+                  placeholderTextColor={designColors.textMuted}
                   value={searchText}
                   onChangeText={(text) => {
                     setSearchText(text);
@@ -258,21 +262,21 @@ const GenerateMoveoutModal: React.FC<GenerateMoveoutModalProps> = ({
                       setShowDropdown(false);
                     }}
                   >
-                    <Icon name="close" size={20} color={colors.textMuted} />
+                    <Icon name="close" size={20} color={designColors.textMuted} />
                   </TouchableOpacity>
                 )}
               </View>
 
               {/* Dropdown Results */}
               {showDropdown && filtered.length > 0 && (
-                <View style={styles.dropdown}>
+                <View style={[styles.dropdown, { backgroundColor: designColors.surfaceVariant }]}>
                   {filtered.slice(0, 5).map((stock) => (
                     <TouchableOpacity
                       key={stock.item_id}
-                      style={styles.dropdownItem}
+                      style={[styles.dropdownItem, { borderBottomColor: designColors.borderLight }]}
                       onPress={() => handleSelectItem(stock)}
                     >
-                      <Text style={styles.dropdownItemText}>
+                      <Text style={[styles.dropdownItemText, { color: designColors.textPrimary }]}>
                         {stock.items?.name} (Current: {stock.current_quantity})
                       </Text>
                     </TouchableOpacity>
@@ -284,12 +288,12 @@ const GenerateMoveoutModal: React.FC<GenerateMoveoutModalProps> = ({
               {selectedItems.length > 0 && (
                 <View style={styles.chipsContainer}>
                   {selectedItems.map((stock) => (
-                    <View key={stock.item_id} style={styles.chip}>
-                      <Text style={styles.chipText}>
+                    <View key={stock.item_id} style={[styles.chip, { backgroundColor: designColors.primaryRed + '30' }]}>
+                      <Text style={[styles.chipText, { color: designColors.textPrimary }]}>
                         {stock.items?.name} ({stock.current_quantity})
                       </Text>
                       <TouchableOpacity onPress={() => handleRemoveSelectedItem(stock)}>
-                        <Icon name="close" size={16} color={colors.textPrimary} />
+                        <Icon name="close" size={16} color={designColors.textPrimary} />
                       </TouchableOpacity>
                     </View>
                   ))}
@@ -300,25 +304,26 @@ const GenerateMoveoutModal: React.FC<GenerateMoveoutModalProps> = ({
               <TouchableOpacity
                 style={[
                   styles.addButton,
-                  selectedItems.length === 0 && styles.addButtonDisabled,
+                  { backgroundColor: designColors.primaryRed },
+                  selectedItems.length === 0 && { backgroundColor: designColors.textMuted },
                 ]}
                 onPress={handleAddToList}
                 disabled={selectedItems.length === 0}
               >
-                <Icon name="add" size={18} color={colors.textPrimary} />
+                <Icon name="add" size={18} color="#FFFFFF" />
                 <Text style={styles.addButtonText}>Add to List</Text>
               </TouchableOpacity>
 
               {/* Moveout List Items Table */}
               {tableItems.length > 0 && (
                 <View style={styles.tableSection}>
-                  <Text style={styles.sectionLabel}>Moveout List Items</Text>
+                  <Text style={[styles.sectionLabel, { color: designColors.textSecondary }]}>Moveout List Items</Text>
 
                   {tableItems.map((item, index) => (
-                    <View key={`${item.itemId}-${index}`} style={styles.tableItem}>
+                    <View key={`${item.itemId}-${index}`} style={[styles.tableItem, { backgroundColor: designColors.surfaceVariant }]}>
                       {/* Item Header with Name and Delete */}
                       <View style={styles.tableItemHeader}>
-                        <Text style={styles.tableItemName}>{item.itemName}</Text>
+                        <Text style={[styles.tableItemName, { color: designColors.textPrimary }]}>{item.itemName}</Text>
                         <TouchableOpacity onPress={() => handleRemoveTableItem(index)}>
                           <Icon name="delete-outline" size={24} color={colors.errorRed} />
                         </TouchableOpacity>
@@ -328,16 +333,17 @@ const GenerateMoveoutModal: React.FC<GenerateMoveoutModalProps> = ({
                       <View style={styles.quantitiesRow}>
                         {/* Current Quantity */}
                         <View style={styles.quantityColumn}>
-                          <Text style={styles.quantityLabel}>Current Quantity</Text>
-                          <Text style={styles.quantityValue}>{item.currentQuantity}</Text>
+                          <Text style={[styles.quantityLabel, { color: designColors.textSecondary }]}>Current Quantity</Text>
+                          <Text style={[styles.quantityValue, { color: designColors.textPrimary }]}>{item.currentQuantity}</Text>
                         </View>
 
                         {/* Requesting Quantity */}
                         <View style={styles.quantityColumn}>
-                          <Text style={styles.quantityLabel}>Requesting Quantity</Text>
+                          <Text style={[styles.quantityLabel, { color: designColors.textSecondary }]}>Requesting Quantity</Text>
                           <TextInput
                             style={[
                               styles.quantityInput,
+                              { backgroundColor: designColors.background, borderColor: designColors.borderLight, color: designColors.textPrimary },
                               item.requestingQuantity > item.currentQuantity && styles.quantityInputError,
                             ]}
                             value={item.requestingQuantity.toString()}
@@ -368,19 +374,20 @@ const GenerateMoveoutModal: React.FC<GenerateMoveoutModalProps> = ({
 
           {/* Footer Buttons */}
           {!isLoading && (
-            <View style={styles.footer}>
+            <View style={[styles.footer, { borderTopColor: designColors.borderLight }]}>
               <TouchableOpacity
-                style={styles.cancelButton}
+                style={[styles.cancelButton, { borderColor: designColors.textSecondary }]}
                 onPress={onClose}
                 disabled={isSaving}
               >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+                <Text style={[styles.cancelButtonText, { color: designColors.primaryRed }]}>Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[
                   styles.generateButton,
-                  !canGenerate && styles.generateButtonDisabled,
+                  { backgroundColor: designColors.primaryRed },
+                  !canGenerate && { backgroundColor: designColors.textMuted },
                 ]}
                 onPress={handleGenerate}
                 disabled={!canGenerate}
