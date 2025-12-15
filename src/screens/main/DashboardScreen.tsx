@@ -529,38 +529,7 @@ const DashboardScreen = ({ navigation }: any) => {
           </TouchableOpacity>
         </View>
 
-        {/* Staff dashboard - match Kotlin layout (stats row, quick actions, recent activity) */}
-        {isStaff && (
-          <>
-            {/* Stats horizontal row */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 8 }}>
-              <View style={{ flexDirection: 'row', gap: 12 }}>
-                <StatCard title="Total Items" value={stats.totalItems} subtitle="Items in inventory" icon="inventory" iconColor={"#2196F3"} themeColors={designColors} />
-                <StatCard title="Low Stock" value={stats.lowStockItems} subtitle="Need restocking" icon="warning" iconColor={designColors.warningOrange} themeColors={designColors} />
-                <StatCard title="Critical Stock" value={stats.criticalStockItems} subtitle="Urgent action" icon="priority-high" iconColor={designColors.errorRed} themeColors={designColors} />
-              </View>
-            </ScrollView>
-
-            {/* Quick Actions */}
-            <Text style={[styles.upcomingTitle, { color: designColors.textPrimary, marginTop: 12 }]}>Quick Actions</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 8 }}>
-              <View style={{ flexDirection: 'row', gap: 12 }}>
-                <QuickActionCard title="Add Item" iconName="inventory" onPress={() => navigation.navigate('Items')} themeColors={designColors} />
-                <QuickActionCard title="Stock In" iconName="trending-up" onPress={() => navigation.navigate('RecordStockIn')} themeColors={designColors} />
-                <QuickActionCard title="Stock Out" iconName="shopping-cart" onPress={() => navigation.navigate('StockOut')} themeColors={designColors} />
-                <QuickActionCard title="Reports" iconName="analytics" onPress={() => navigation.navigate('Reports')} themeColors={designColors} />
-              </View>
-            </ScrollView>
-
-            {/* Recent Activity */}
-            <Text style={[styles.upcomingTitle, { color: designColors.textPrimary, marginTop: 12 }]}>Recent Activity</Text>
-            <View style={{ marginTop: 8 }}>
-              {moveoutLists.slice(0, 3).map((l) => (
-                <ActivityItemSimple key={l.id} item={{ title: l.title || 'Moveout', description: `${l.items?.length || 0} items`, time: 'recent', icon: 'shopping-cart' }} themeColors={designColors} />
-              ))}
-            </View>
-          </>
-        )}
+        {/* Staff view: only show big action pills; other widgets handled below */}
 
         {/* Stats Grid - 2x2 (Non-staff only) */}
         {showStatsGrid && (
@@ -666,14 +635,16 @@ const DashboardScreen = ({ navigation }: any) => {
           )}
         </View>
 
-        {/* Calendar & Events Section */}
-        <CalendarSection
-          events={calendarEvents}
-          selectedDate={new Date()}
-          onAddEvent={() => setShowAddEventModal(true)}
-          showAddButton={isManager}
-          themeColors={designColors}
-        />
+        {/* Calendar & Events Section (non-staff only) */}
+        {!isStaff && (
+          <CalendarSection
+            events={calendarEvents}
+            selectedDate={new Date()}
+            onAddEvent={() => setShowAddEventModal(true)}
+            showAddButton={isManager}
+            themeColors={designColors}
+          />
+        )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
