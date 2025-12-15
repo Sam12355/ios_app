@@ -181,6 +181,28 @@ const MoveoutListItem = ({
   );
 };
 
+// Quick Action Card (for staff dashboard)
+const QuickActionCard = ({ title, iconName, onPress, themeColors }: { title: string; iconName: string; onPress: () => void; themeColors: DesignColors }) => (
+  <TouchableOpacity onPress={onPress} style={[styles.quickActionCard, { backgroundColor: themeColors.primaryRed }]} activeOpacity={0.8}>
+    <Icon name={iconName} size={28} color="#FFFFFF" />
+    <Text style={styles.quickActionTitle}>{title}</Text>
+  </TouchableOpacity>
+);
+
+// Recent activity item (simple)
+const ActivityItemSimple = ({ item, themeColors }: { item: { title: string; description: string; time: string; icon: string }; themeColors: DesignColors }) => (
+  <TouchableOpacity style={[styles.activityCard, { backgroundColor: themeColors.cardBackground, borderColor: themeColors.border }]} activeOpacity={0.8}>
+    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      <Icon name={item.icon} size={20} color={themeColors.textPrimary} />
+      <View style={{ marginLeft: 12, flex: 1 }}>
+        <Text style={[styles.activityTitle, { color: themeColors.textPrimary }]}>{item.title}</Text>
+        <Text style={[styles.activityDesc, { color: themeColors.textSecondary }]}>{item.description}</Text>
+      </View>
+      <Text style={[styles.activityTime, { color: themeColors.textMuted }]}>{item.time}</Text>
+    </View>
+  </TouchableOpacity>
+);
+
 // Calendar Component - Matching Android exactly
 const CalendarSection = ({
   events,
@@ -340,7 +362,7 @@ const DashboardScreen = ({ navigation }: any) => {
   const isManager = profile?.role === 'manager' || profile?.role === 'assistant_manager';
   const isAdmin = profile?.role === 'admin';
   const showStatsGrid = !isStaff; // Non-staff see stats
-  const showGenerateButton = isManager; // Only managers can generate
+  const showGenerateButton = isManager || isStaff; // Allow staff to see generate button to match screenshot
 
   const userName = profile?.name || 'User';
 
@@ -486,22 +508,58 @@ const DashboardScreen = ({ navigation }: any) => {
           </TouchableOpacity>
         </View>
 
-        {/* Staff quick actions (Staff sees a different dashboard) */}
+        {/* Large quick action pills (Generate, ICA Delivery) - visible to all (matches screenshot) */}
+        <View style={{ marginVertical: 8 }}>
+          <TouchableOpacity
+            style={[styles.bigPill, { backgroundColor: designColors.primaryRed }]}
+            onPress={() => setShowGenerateModal(true)}
+            activeOpacity={0.9}
+          >
+            <Icon name="add" size={20} color="#FFFFFF" />
+            <Text style={styles.bigPillText}>Generate</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.bigPill, { backgroundColor: '#00A85A', marginTop: 12 }]}
+            onPress={() => navigation.navigate('ICADelivery')}
+            activeOpacity={0.9}
+          >
+            <Icon name="local-shipping" size={20} color="#FFFFFF" />
+            <Text style={styles.bigPillText}>ICA Delivery</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Staff dashboard - match Kotlin layout (stats row, quick actions, recent activity) */}
         {isStaff && (
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('StockOut')}
-              style={[styles.staffButton, { backgroundColor: designColors.primaryRed, marginRight: 8 }]}
-            >
-              <Text style={styles.staffButtonText}>Stock Out</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('RecordStockIn')}
-              style={[styles.staffButton, { backgroundColor: designColors.primaryRed, marginLeft: 8 }]}
-            >
-              <Text style={styles.staffButtonText}>Record Stock In</Text>
-            </TouchableOpacity>
-          </View>
+          <>
+            {/* Stats horizontal row */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 8 }}>
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <StatCard title="Total Items" value={stats.totalItems} subtitle="Items in inventory" icon="inventory" iconColor={"#2196F3"} themeColors={designColors} />
+                <StatCard title="Low Stock" value={stats.lowStockItems} subtitle="Need restocking" icon="warning" iconColor={designColors.warningOrange} themeColors={designColors} />
+                <StatCard title="Critical Stock" value={stats.criticalStockItems} subtitle="Urgent action" icon="priority-high" iconColor={designColors.errorRed} themeColors={designColors} />
+              </View>
+            </ScrollView>
+
+            {/* Quick Actions */}
+            <Text style={[styles.upcomingTitle, { color: designColors.textPrimary, marginTop: 12 }]}>Quick Actions</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 8 }}>
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <QuickActionCard title="Add Item" iconName="inventory" onPress={() => navigation.navigate('Items')} themeColors={designColors} />
+                <QuickActionCard title="Stock In" iconName="trending-up" onPress={() => navigation.navigate('RecordStockIn')} themeColors={designColors} />
+                <QuickActionCard title="Stock Out" iconName="shopping-cart" onPress={() => navigation.navigate('StockOut')} themeColors={designColors} />
+                <QuickActionCard title="Reports" iconName="analytics" onPress={() => navigation.navigate('Reports')} themeColors={designColors} />
+              </View>
+            </ScrollView>
+
+            {/* Recent Activity */}
+            <Text style={[styles.upcomingTitle, { color: designColors.textPrimary, marginTop: 12 }]}>Recent Activity</Text>
+            <View style={{ marginTop: 8 }}>
+              {moveoutLists.slice(0, 3).map((l) => (
+                <ActivityItemSimple key={l.id} item={{ title: l.title || 'Moveout', description: `${l.items?.length || 0} items`, time: 'recent', icon: 'shopping-cart' }} themeColors={designColors} />
+              ))}
+            </View>
+          </>
         )}
 
         {/* Stats Grid - 2x2 (Non-staff only) */}
@@ -546,14 +604,11 @@ const DashboardScreen = ({ navigation }: any) => {
           </View>
         )}
 
-        {/* Non-staff content (weather, moveout lists, calendar, etc.) */}
-        {!isStaff && (
-          <>
-            {/* Weather Widget */}
-            <WeatherWidget weather={weather} themeColors={designColors} />
+        {/* Weather Widget */}
+        <WeatherWidget weather={weather} themeColors={designColors} />
 
-            {/* Generated Moveout Lists Section */}
-            <View style={[
+        {/* Generated Moveout Lists Section */}
+        <View style={[
           styles.moveoutSection,
           {
             backgroundColor: designColors.cardBackground,
@@ -569,7 +624,7 @@ const DashboardScreen = ({ navigation }: any) => {
           <View style={styles.moveoutHeader}>
             <View>
               <Text style={[styles.moveoutTitle, { color: designColors.textPrimary }]}>Generated Moveout Lists</Text>
-              <Text style={[styles.moveoutSubtitle, { color: designColors.textSecondary }]}>
+              <Text style={[styles.moveoutSubtitle, { color: designColors.textSecondary }] }>
                 {showHistory ? 'Generated and completed moveout lists' : 'Generated moveout lists'}
               </Text>
             </View>
@@ -583,7 +638,7 @@ const DashboardScreen = ({ navigation }: any) => {
                   <Text style={styles.generateButtonText}>Generate</Text>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity onPress={toggleHistory} style={[styles.historyButton, { backgroundColor: designColors.surface, borderWidth: 1, borderColor: designColors.border }]}>
+              <TouchableOpacity onPress={toggleHistory} style={[styles.historyButton, { backgroundColor: designColors.surface, borderWidth: 1, borderColor: designColors.border }] }>
                 <Icon name="history" size={24} color={designColors.textPrimary} />
               </TouchableOpacity>
             </View>
@@ -611,16 +666,14 @@ const DashboardScreen = ({ navigation }: any) => {
           )}
         </View>
 
-            {/* Calendar & Events Section (Non-staff only) */}
-            <CalendarSection
-              events={calendarEvents}
-              selectedDate={new Date()}
-              onAddEvent={() => setShowAddEventModal(true)}
-              showAddButton={isManager}
-              themeColors={designColors}
-            />
-          </>
-        )}
+        {/* Calendar & Events Section */}
+        <CalendarSection
+          events={calendarEvents}
+          selectedDate={new Date()}
+          onAddEvent={() => setShowAddEventModal(true)}
+          showAddButton={isManager}
+          themeColors={designColors}
+        />
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -887,6 +940,51 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: "#FFFFFF",
     fontWeight: '500',
+  },
+  quickActionCard: {
+    width: 120,
+    height: 92,
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickActionTitle: {
+    color: '#FFFFFF',
+    marginTop: 8,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  activityCard: {
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+  },
+  activityTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  activityDesc: {
+    fontSize: 12,
+  },
+  activityTime: {
+    fontSize: 12,
+    marginLeft: 8,
+  },
+  bigPill: {
+    width: '100%',
+    paddingVertical: 18,
+    borderRadius: 34,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bigPillText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
+    marginLeft: 12,
   },
   emptyMoveout: {
     alignItems: 'center',
